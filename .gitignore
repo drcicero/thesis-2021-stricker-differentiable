@@ -1,0 +1,10 @@
+/.bloop/
+/.bsp/
+/.idea/
+/.metals/
+/.vscode/
+/project/.bloop/
+/project/project/project/target/config-classes/
+/project/project/target/
+/project/target/
+/target/
