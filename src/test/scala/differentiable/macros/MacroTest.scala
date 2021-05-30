@@ -30,7 +30,6 @@ class MacroTest extends AnyFunSuite {
     )
 
     cases.foreach { (actual, expected) =>
-      println(actual)
       (-5 to 5).foreach { x =>
         val actualValueOption =
           try Some(actual(x)) catch case _: IllegalArgumentException => None
