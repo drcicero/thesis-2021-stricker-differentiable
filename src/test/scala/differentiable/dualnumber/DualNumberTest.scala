@@ -1,6 +1,5 @@
 package differentiable.dualnumber
 
-import differentiable.dualnumber._
 import org.scalactic.Equality
 import org.scalactic.TolerantNumerics.tolerantDoubleEquality
 import org.scalatest.funsuite.AnyFunSuite

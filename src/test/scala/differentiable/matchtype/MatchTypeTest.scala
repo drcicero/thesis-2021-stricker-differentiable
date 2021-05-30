@@ -1,6 +1,5 @@
 package differentiable.matchtype
 
-import differentiable.matchtype._
 import org.scalactic.Equality
 import org.scalactic.TolerantNumerics.tolerantDoubleEquality
 import org.scalatest.funsuite.AnyFunSuite
