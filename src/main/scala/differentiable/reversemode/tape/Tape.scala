@@ -8,7 +8,7 @@ import scala.quoted._
 import scala.language.implicitConversions
 import scala.async.Async.{async, await}
 
-var tape: Unit => Unit = (_: Unit) => ()
+var tape: Unit => Unit = _ => ()
 
 case class Dual(x: Double, var d: Double):
   def +(r: Dual): Dual =
@@ -31,7 +31,7 @@ given Conversion[Double, Dual] = Dual(_, 0)
 given Conversion[Int, Dual] = Dual(_, 0)
 
 def grad(x: Double)(f: Dual => Dual): Double =
-  grad(x :: Nil) { case xDual :: _ =>
+  grad(x :: Nil) { case xDual :: Nil =>
     f(xDual)
   }
   .head

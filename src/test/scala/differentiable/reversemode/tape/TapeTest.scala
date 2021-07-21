@@ -5,6 +5,7 @@ import org.scalactic.TolerantNumerics.tolerantDoubleEquality
 import org.scalatest.funsuite.AnyFunSuite
 
 import java.lang.Math.{pow, random}
+import scala.annotation.tailrec
 import scala.language.implicitConversions
 
 class TapeTest extends AnyFunSuite {
@@ -53,7 +54,7 @@ class TapeTest extends AnyFunSuite {
     def loss(x: Double)(ws: List[Dual]): Dual =
       (trainPoly(x)(realWs) + -1 * poly(x)(ws)) ** 2
 
-    def learn(ws: List[Double], rate: Double, stopAcc: Double, maxIterations: Int): List[Double] =
+    @tailrec def learn(ws: List[Double], rate: Double, stopAcc: Double, maxIterations: Int): List[Double] =
       val lossAverage =
         trainInput
           .map { x =>
@@ -84,10 +85,10 @@ class TapeTest extends AnyFunSuite {
     end learn
 
     val initialWs = (0 to 3 map { _ => 300 * random - 150 }).toList
-    val acc = 0.00001
+    val acc = 1E-9
     val learnedWs = learn(initialWs, 0.0007, acc, 100000)
 
-    implicit val doubleEq: Equality[Double] = tolerantDoubleEquality(0.01)
+    implicit val doubleEq: Equality[Double] = tolerantDoubleEquality(0.0001)
     assert(realWs zip learnedWs map { _ === _ } reduce { _ && _ }, s"\nreal: $realWs\nlearned: $learnedWs")
     println(s"Init: $initialWs")
     println(s"Real: $realWs")
