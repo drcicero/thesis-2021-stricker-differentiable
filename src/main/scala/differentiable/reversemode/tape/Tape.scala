@@ -6,7 +6,6 @@ import scala.compiletime.ops.int._
 import scala.compiletime.{constValue, erasedValue}
 import scala.quoted._
 import scala.language.implicitConversions
-import scala.async.Async.{async, await}
 
 var tape: Unit => Unit = _ => ()
 
