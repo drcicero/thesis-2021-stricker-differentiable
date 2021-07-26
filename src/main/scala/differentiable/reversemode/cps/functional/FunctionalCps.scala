@@ -7,31 +7,37 @@ import scala.compiletime.{constValue, erasedValue}
 import scala.language.implicitConversions
 import scala.quoted._
 
-class Num(val x: Double):
+case class Num(val x: Double):
   def +(that: Num)(k: Cont): Deriv =
-    val y = Num(x + that.x)
+    val y = Num(this.x + that.x)
     val deriv = k(y)
-    deriv
-      .updated(this, deriv(this) + deriv(y))
-      .updated(that, deriv(that) + deriv(y))
+    val derivWithThis = updateDeriv(deriv, this, y){ identity }
+    updateDeriv(derivWithThis, that, y){ identity }
 
   def *(that: Num)(k: Cont): Deriv =
-    val y = Num(x * that.x)
+    val y = Num(this.x * that.x)
     val deriv = k(y)
-    deriv
-      .updated(this, deriv(this) + that.x * deriv(y))
-      .updated(that, deriv(that) + x * deriv(y))
+    val derivWithThis = updateDeriv(deriv, this, y){ that.x * _ }
+    updateDeriv(derivWithThis, that, y){ this.x * _ }
+
+  private def updateDeriv(deriv: Deriv, key: Num, y: Num)(op: (yd: Double) => Double): Deriv =
+    deriv + (key -> (
+      deriv(key) + op(deriv(y))
+      ))
+
+  override def toString: String = x.toString
 end Num
+
 
 given Conversion[Double, Num] = Num(_)
 given Conversion[Int, Num] = Num(_)
 
-def grad(f: Num => Cont => Deriv)(x: Double): Double =
+def grad(f: Num => Cont => Deriv)(x: Double): Deriv =
   val xDual = Num(x)
   val d = f(xDual) { (topExpression: Num) =>
     Map(topExpression -> 1.0).withDefaultValue(0)
   }
-  d(xDual)
+  d
 
 type Deriv = Map[Num, Double]
 type Cont = Num => Deriv
@@ -47,5 +53,5 @@ type Cont = Num => Deriv
         }
       }
     }
-
+  // 2x + x^3 => 2 + 3x^2
   println(grad(f)(3))

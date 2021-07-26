@@ -1,67 +1,78 @@
 package differentiable.reversemode.monadcps.functional
 
-import differentiable.reversemode.monadcps.functional.M.wrap
+import differentiable.reversemode.monadcps.functional.Monad.wrap
 
-import java.lang.Math.pow
+import java.lang.Math.{pow, toIntExact}
 import scala.annotation.showAsInfix
 import scala.compiletime.ops.int._
 import scala.compiletime.{constValue, erasedValue}
 import scala.language.implicitConversions
 import scala.quoted._
 
-case class M(val y: Num, val d: Deriv, derivationUpdater: (Num, Deriv) => Deriv):
-  def flatMap(k: Num => M): M =
-    val m = k(y)
-    M(y, derivationUpdater(y, m.d), (_, d) => d)
+case class Monad(val y: Num, derivationUpdater: Deriv => Deriv):
+  def flatMap(k: Num => Monad): Monad =
+    val that = k(y)
+    Monad(that.y, that.derivationUpdater andThen this.derivationUpdater )
 
-  def map(k: Num => Num): M =
-    flatMap(n => wrap(k(n), d.updated(y, 1))) // TODO: remove finalization to make f chainable
-end M
+  def map(k: Num => Num): Monad =
+    flatMap(k andThen wrap)
 
-object M:
-  def wrap(n: Num, d: Deriv = defaultMap): M =
-    M(n, d, (_, d) => d)
+object Monad:
+  def wrap(n: Num): Monad = Monad(n, identity)
 
-case class Num(x: Double):
-  def +(r: Num): M = M(
-    x + r.x,
-    defaultMap,
-    (y, d) =>
-      d
-        .updated(this, d(this) + d(y))
-        .updated(r, d(r) + d(y))
-  )
+class Num(val x: Double):
+  def +(that: Num): Monad =
+    val y = Num(this.x + that.x)
+    Monad(
+      y,
+      deriv =>
+        val derivWithThis = updateDeriv(deriv, this, y){ identity }
+        updateDeriv(derivWithThis, that, y){ identity }
+    )
 
-  def *(r: Num): M = M(
-    x * r.x,
-    defaultMap,
-    (y, d) =>
-      d
-        .updated(this, d(this) + r.x * d(y))
-        .updated(r, d(r) + x * d(y))
-  )
+  def *(that: Num): Monad =
+    val y = Num(this.x * that.x)
+    Monad(
+      y,
+      deriv =>
+        val derivWithThis = updateDeriv(deriv, this, y){ that.x * _ }
+        updateDeriv(derivWithThis, that, y){ this.x * _ }
+    )
+
+  private def updateDeriv(deriv: Deriv, key: Num, y: Num)(op: (yd: Double) => Double): Deriv =
+    deriv + (key -> (
+      deriv(key) + op(deriv(y))
+      ))
+
+  override def toString: String = x.toString
 end Num
 
 given Conversion[Double, Num] = Num(_)
 given Conversion[Int, Num] = Num(_)
 
-def grad(f: M => M)(x: Double): Double =
+def grad(f: Monad => Monad)(x: Double): Double =
   val xM = wrap(Num(x))
-  val d = f(xM).d
-  d(xM.y)
+  val topMonad = f(xM)
+  val initialDeriv = Map.empty.withDefaultValue(0.0).updated(topMonad.y, 1.0)
+  println(topMonad)
+  topMonad.derivationUpdater(initialDeriv)(xM.y)
 
-val defaultMap : Deriv = Map.empty.withDefaultValue(0)
 type Deriv = Map[Num, Double]
 
 @main def main() =
-  def f(xM: M): M =
-    for {
+  def f(xM: Monad): Monad =
+    for
       x <- xM
       y1 <- x * 2
       y2 <- x * x
       y3 <- y2 * x // y3' = y2' * x + y2 * x'
       y4 <- y1 + y3
-    } yield y4
-  end f
+    yield y4
 
-  println(grad(f)(3))
+  def g(xM: Monad): Monad =
+    for
+      x <- xM
+      y <- x * x
+    yield y
+
+  println(grad(f andThen g)(3))
