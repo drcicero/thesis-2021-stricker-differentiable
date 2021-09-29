@@ -17,6 +17,9 @@ case class Monad(val y: Num, derivationUpdater: Deriv => Deriv):
   def map(k: Num => Num): Monad =
     flatMap(k andThen wrap)
 
+  def unary_! : Num = ???
+  def _yield : Monad = this
+
 object Monad:
   def wrap(n: Num): Monad = Monad(n, identity)
 
@@ -61,13 +64,15 @@ type Deriv = Map[Num, Double]
 
 @main def main() =
   def f(xM: Monad): Monad =
-    for
-      x <- xM
-      y1 <- x * 2
-      y2 <- x * x
-      y3 <- y2 * x // y3' = y2' * x + y2 * x'
-      y4 <- y1 + y3
-    yield y4
+    forless {
+      val x = !xM
+      val z = 2
+      println("print in forless")
+      val y1 = !(x * z)
+      val y2 = !(x * x)
+      val y3 = !(y2 * x)
+      (y1 + y3)._yield
+    }
 
   def g(xM: Monad): Monad =
     for
@@ -75,4 +80,4 @@ type Deriv = Map[Num, Double]
       y <- x * x
     yield y
 
-  println(grad(f andThen g)(3))
+  println(grad(f)(3))
