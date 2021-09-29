@@ -4,15 +4,21 @@ import java.lang.Math.{pow, toIntExact}
 import java.util.UUID
 import java.util.UUID.randomUUID
 import scala.annotation.showAsInfix
-import scala.compiletime.ops.int._
+import scala.collection.immutable.ListSet
+import scala.compiletime.ops.int.*
 import scala.compiletime.{constValue, erasedValue}
 import scala.language.implicitConversions
-import scala.quoted._
+import scala.quoted.*
 
-case class Num(x: Double, derivUpdater: Deriv => Deriv, id: UUID):
+case class Num(x: Double, derivUpdater: ListSet[Deriv => Deriv], id: UUID):
   def +(that: Num): Num = op(that, _ + _, identity, identity)
 
   def *(that: Num): Num = op(that, _ * _, that.x * _, this.x * _)
+
+  def **(n: Int): Num = n match
+    case 0 => 1
+    case _ if n < 0 => throw IllegalArgumentException("Exponent < 0")
+    case _ => List.fill(n) { this } reduce {_ * _}
 
   private def op(
                   that: Num,
@@ -34,8 +40,10 @@ case class Num(x: Double, derivUpdater: Deriv => Deriv, id: UUID):
         val derivWithThis = updateDeriv(deriv, this.id){ thisDerivSummand }
         updateDeriv(derivWithThis, that.id){ thatDerivSummand }
       }
+    // If we already visited a node (because it was saved in a val and is used multiple times) then we don't want to
+    // add its derivUpdater multiple times. Therefore a ListSet is used to save the "tape"
     val composedDerivUpdater =
-      additionalDerivUpdater andThen this.derivUpdater andThen that.derivUpdater
+      ListSet(additionalDerivUpdater) ++ this.derivUpdater ++ that.derivUpdater
     Num(
       numericOp(this.x, that.x),
       composedDerivUpdater,
@@ -47,9 +55,9 @@ case class Num(x: Double, derivUpdater: Deriv => Deriv, id: UUID):
 end Num
 
 object Num:
-  def apply(x: Double, derivationUpdater: Deriv => Deriv): Num =
-    Num(x, derivationUpdater, randomUUID())
-  def apply(x: Double): Num = Num(x, identity)
+  def apply(x: Double, derivUpdater: ListSet[Deriv => Deriv]): Num = 
+    Num(x, derivUpdater, randomUUID())
+  def apply(x: Double): Num = Num(x, ListSet(identity))
 end Num
 
 type Deriv = Map[UUID, Double]
@@ -63,12 +71,19 @@ def grad(f: Num => Num)(x: Double): Double =
   val top = f(xNum)
   val initialDeriv = Map.empty.withDefaultValue(0.0).updated(top.id, 1.0)
   println(top)
-  top.derivUpdater(initialDeriv)(xNum.id)
+  top.derivUpdater.reduceLeft(_ andThen _)(initialDeriv)(xNum.id)
 
 
 @main def main() =
   def f(x: Num): Num =
-    2 * x + x * x * x
+    val b = 2 * x
+    if b.x > 5 then b else 2
+//    (b + b) * b
 
-//  2 + 3 * x ^ 2 = 2 + 3 * 9 = 29
-  println(grad(f)(3))
+  def g(x: Num): Num =
+    val b = x * x
+    b + b
+
+
+  //2(4x * 2x)^2 = 2(8x^2)^2 = 2*64x^4 = 128x^4 =>
+  println(grad(f andThen g)(3))
