@@ -23,6 +23,10 @@ given Monoid[Real] with
 
 
 case class Dual[Val <: RealN, DOut <: RealN](v: Val, d: Val => DOut)
+extension[DOut <: RealN: Monoid](thisRealDual: Dual[Real, DOut])
+  def *(thatRealDual: Dual[Real, DOut]): Dual[Real , DOut] = mulTwo(thisRealDual, thatRealDual)
+  def +(thatRealDual: Dual[Real, DOut]): Dual[Real , DOut] = sumTwo(thisRealDual, thatRealDual)
+
 
 def variable[Val <: RealN](v: Val): Dual[Val, Val] = Dual(v, identity)
 
@@ -40,7 +44,7 @@ def mulOne[DOut <: RealN](t: Dual[Real2, DOut]): Dual[Real, DOut] =
           tD(dMul(tV)(y))
       )
 
-def mulTwo[DIn <: RealN, DOut <: RealN: Monoid](
+def mulTwo[DOut <: RealN: Monoid](
                                                  l: Dual[Real, DOut],
                                                  r: Dual[Real, DOut]
                                                ): Dual[Real , DOut] =
@@ -77,9 +81,9 @@ given Conversion[Int, Dual[Real, Real]] = const(_)
 @main def main() =
 //  val x = 5.0
 //  println(mulOne(variable(5, 4)).d(1.0))
-
+  
   val x = variable(3)
-  val y1 = mulTwo(2, x)
-  val y2 = mulTwo(x, x)
-  val y3 = mulTwo(y2, x)
-  println(sumTwo(y1, y3).d(1))
+  val y1 = 2 * x
+  val y2 = x * x
+  val y3 = y2 * x
+  println((y1 + y3).d(1))
