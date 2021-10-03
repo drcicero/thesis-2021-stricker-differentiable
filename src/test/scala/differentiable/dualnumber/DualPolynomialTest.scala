@@ -6,7 +6,7 @@ import org.scalatest.funsuite.AnyFunSuite
 
 import scala.language.implicitConversions
 
-class DualNumberTest extends AnyFunSuite {
+class DualPolynomialTest extends AnyFunSuite {
   implicit val doubleEq: Equality[Double] = tolerantDoubleEquality(0.0001)
 
   test("dual number differentiation") {
