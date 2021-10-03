@@ -1,0 +1,162 @@
+% see this link for more info:
+% https://github.com/tudace/tuda_latex_templates/blob/master/example/DEMO-TUDaThesis.tex
+\documentclass[
+	english,
+	class=report,custommargins=true,marginpar=false,
+	accentcolor=9c,% red-y emphasis color
+	thesis={type=bachelor},% bachelor vs master
+	%BCOR=5mm,%binding correction
+	fontsize=11pt,% font size
+%	logofile=example-image, %Falls die Logo Dateien nicht vorliegen
+]{tudapub}
+
+%%My own stuff
+\usepackage{listings}
+	\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+	\definecolor{backcolour}{rgb}{0.98,0.98,0.96}
+	\definecolor{stringcolour}{RGB}{98,151,85}
+	\definecolor{keywordcolour}{RGB}{204,120,50}
+	% \definecolor{keywordcolour}{RGB}{0,0,150}
+	\lstdefinestyle{jetbrains}{
+		backgroundcolor=\color{backcolour},   
+		commentstyle=\color{stringcolour},
+		keywordstyle=\color{keywordcolour},
+		numberstyle=\tiny\color{codegray},
+		stringstyle=\color{stringcolour},
+		basicstyle=\ttfamily\footnotesize,
+		breakatwhitespace=false,         
+		breaklines=true,                 
+		captionpos=b,                    
+		keepspaces=true,                 
+		numbers=left,                    
+		numbersep=5pt,                  
+		showspaces=false,                
+		showstringspaces=false,
+		showtabs=false,                  
+		tabsize=2
+	}
+	\lstset{style=jetbrains}
+\usepackage{scrhack} % to prevent an error when using a self defined listing command
+
+\newcommand{\lstscala}[3]{\lstinputlisting[language=scala, firstline=#2, lastline=#3]{listings/#1}}
+
+\newcommand{\lstscalacaption}[5]{\lstinputlisting[language=scala, firstline=#2, lastline=#3, label={lst:#5}, caption={#4}]{listings/#1}}
+
+
+
+
+%%This is needed for pdfTeX version older than April 2018
+\usepackage{iftex}
+\ifPDFTeX
+\usepackage[utf8]{inputenc}
+\fi
+
+\usepackage[main=english, ngerman]{babel} % language support
+\usepackage[autostyle]{csquotes}          % quote-characters e.g. " "
+\usepackage{microtype}                    % microtyping
+\usepackage{biblatex}                     % bibliography
+
+\bibliography{content/references}
+%\addbibresource{content/references.bib}
+
+
+%%latex package recommendations: tables + math
+\usepackage{tabularx}   % tables columns x to expand and fill linewidth
+%\usepackage{longtable} % multi-page tables
+%\usepackage{xltabular} % both features from tabularx and longtable
+\usepackage{booktabs}   % better looking style for table rulers
+%\usepackage{mathtools} % better than amsmath
+%\usepackage{amssymb}   % more symbols
+%\usepackage{siunitx}   % si-units
+
+\newcommand{\todo}[1]{{\color{red}{\textbf{TODO: }#1}}}
+
+\begin{document}
+
+\Metadata{
+	title=Comparing implementation strategies for differentiable programming,
+	author=Daniel Stricker
+}
+
+\title{Comparing implementation strategies for differentiable programming}
+\subtitle{}
+\author{Daniel Stricker}%optional argument used in affidavit
+\reviewer{Prof. Dr.-Ing. Mira Mezini \and David Richter, M.Sc.}
+\department{inf}
+%\institute{Software Technology}
+\group{Software Technology}
+
+\submissiondate{\today}
+\examdate{\today}
+
+%\tuprints{urn=1234,printid=12345}
+%\dedication{...}
+
+\maketitle
+
+\affidavit
+
+% \input{content/abstract}
+% \chapter{Abstract [1]}
+
+\tableofcontents
+
+
+\input{content/implementation/implementation}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Planned table of contents
+% \IMRADlabel{introduction}
+% \input{content/introduction}
+\chapter{Introduction [1/2]}
+	\section{Motivation, Why? -> ML needs this for Newton etc}
+% \IMRADlabel{methods}
+	\section{Overview}
+		\subsection{Short summary of all implementation styles (i.e. CPS, Monad, tape, macro) [1/2]}
+	\section{Details}
+		\subsection{Example backpropagation by hand [1]}
+		\subsection{Go through a real ML task (the implemented test) with "grad" as blackbox -> defines "goal" [1]}
+% \input{content/implementation}
+
+\chapter{Implementation}
+	\section{Forward mode [1]}
+		\subsection{by operator overloading (including macros)}
+		\subsection{Match type implementation (and bad performance). Explain type level calculations (Peano). Pro/Con [1]}
+
+	\section{Backpropagation with mutation}
+		\subsection{Tape [1/2]} %maybe first?
+		\subsection{CPS}
+			\subsection{Explain Continuations (without shift/reset) [1/2]}
+			\subsection{Encode backward pass as continuation [1/2]}
+		\subsection{MonadCPS}
+			\subsection{ -- For-comprehensions (flatMap, map) [1/2]}
+			\subsection{ -- First try: .map() "closes" monad [1/2] }
+			\subsection{ -- Second try: Chaining of functions with global tape [1/2]}
+
+	\section{Backpropagtion without mutation (functional)}
+		\subsection{Why functional? (state, multiple calculations, reasoning) [1/2]}
+		\subsection{CPS, MonadCPS [1]}
+		\subsection{Tape}
+			\subsection{ -- First try: naive (val, var difference -> multiple updates) [1/2]}
+			\subsection{ -- Second try: Every node has to be calculated once [1]}
+		\subsection{Con: (speed, ...) [1]}
+
+    \section{Macros? [2]}
+
+
+% \IMRADlabel{results}
+\chapter{Evaluation}
+	\section{List all comparison metrics (Runtime, LOC, compile time) [1]}
+	\section{Interpretation [1/2]}
+\chapter{Related work}
+	\section{lantern paper [1/2]}
+
+% \IMRADlabel{discussion}
+\chapter{Conclusion [1/2]}
+
+
+
+% Pages: 15
+\printbibliography
+
+\end{document}
