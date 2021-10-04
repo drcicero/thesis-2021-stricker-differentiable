@@ -27,7 +27,7 @@ class MatchTypeTest extends AnyFunSuite {
       d[X * V[5]] -> initPolynomial[
         V[5]
       ],
-      // compile time is much longer with 4 multiplications
+      // compile time was fixed by a Scala update :) Old comment: "compile time is much longer with 4 multiplications"
       d[V[0] + V[0] * V[-0.1] + (X ** 10) * (X ** 0) * (X ** 2) + (X**3) * X * (X**2)] -> initPolynomial[
         V[12] * (X**11) + V[6] * (X**5)
       ]

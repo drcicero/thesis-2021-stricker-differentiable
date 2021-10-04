@@ -39,8 +39,8 @@
 \usepackage{scrhack} % to prevent an error when using a self defined listing command
 
 \newcommand{\lstscala}[3]{\lstinputlisting[language=scala, firstline=#2, lastline=#3]{listings/#1}}
-
 \newcommand{\lstscalacaption}[5]{\lstinputlisting[language=scala, firstline=#2, lastline=#3, label={lst:#5}, caption={#4}]{listings/#1}}
+\newcommand{\lstscalainline}[1]{\lstinline[language=scala]{#1}}
 
 
 
@@ -67,7 +67,7 @@
 \usepackage{booktabs}   % better looking style for table rulers
 %\usepackage{mathtools} % better than amsmath
 %\usepackage{amssymb}   % more symbols
-%\usepackage{siunitx}   % si-units
+\usepackage{siunitx}   % si-units
 
 \newcommand{\todo}[1]{{\color{red}{\textbf{TODO: }#1}}}
 

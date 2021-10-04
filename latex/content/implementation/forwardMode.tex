@@ -3,8 +3,7 @@
 Forward mode differentiation by hand is straight forward and also translates well into code by sticking to our existing knowledge about symbolic differentiation \todo{define symbolic differentiation?}. Essentially we want to go through every operation recursively and replace it with its derivative.
 
 
-\subsection{Literal approach with macros}
-
+\subsection{Code replacement with macros}
 If you take the last sentence literally you could now go the long and hard way (which we did), learn metaprogramming and implement it exactly by replacing expressions with their derivative. This approach looks rather ugly at first sight but after ignoring the boilerplate one can see that it just boils down to recursive pattern matching of code which works pretty well in Scala 3:
 \begin{lstlisting}[language=scala]
     def d(t: Expr[Term])(using Quotes): Expr[Term] = t match
@@ -19,7 +18,7 @@ As this was just a small experiment we leave this here without much explanation 
 
 
 \subsection{Operator overloading with dual numbers}
-\todo{Highly inspired by lantern paper (or github)}
+\todo{Highly inspired by lantern paper (link to it or github)}
 Rewriting code that way has one problem. We loose the actual result of our formula and only get the derivative (or we would have to calculate both separately). Instead we could use a structure that consists of two values, the normal result of the operation and its derivative. Such a construct is called a "dual number" \todo{link Wikipedia or maybe a paper?} and could look like this:
 \lstscala{implementation/DualNumber.scala}{3}{3}
 To implement an operation on these we have to define the actual computation and additionally how to compute the derivative:
@@ -31,4 +30,40 @@ Differentiation of a function $f$ at $x = 3$ could then look like this:
 
 
 \subsection{Static typing taken too far (Or: Let the compiler code for you)}
-To explain the following approach we first have to look at match types \cite{matchTypesScala3}which are essentially functions but at type level.
+To explain the following approach we first have to look at match types which are essentially functions but at type level. We put one type in, look at it and decide which type to "return". It gets clear with the following example taken from the Scala 3 docs \cite{matchTypesScala3}. You could get the element type of any list-like type:
+\begin{lstlisting}[language=scala]
+    type Elem[X] = X match
+        case String => Char
+        case Array[t] => t
+        case Iterable[t] => t
+\end{lstlisting}
+By recursively matching types we can implement a differentiator purely at type level:
+\begin{lstlisting}[language=scala]
+    type D[T <: Term] <: Term = T match
+        case l * r => 
+            l * D[r] + D[l] * r
+        case l + r => 
+            D[l] + D[r]
+        case X => 
+            V[1]
+        case V[_] => 
+            V[0]
+\end{lstlisting}
+\lstscalainline{T} is just a type but represents a full calculation. Furthermore notice that the \lstscalainline{*} and \lstscalainline{+} operators seen above are infix types and not methods: 
+\begin{lstlisting}[language=scala]
+    type +[L <: Term, R <: Term] <: Term
+    type *[L <: Term, R <: Term] <: Term
+\end{lstlisting}
+Line 7 and 9 still look suspicious. What are integers doing as a type parameter? These are compile time value types which are now supported in Scala 3:
+\begin{lstlisting}[language=scala]
+    type V[C <: Double | Int] <: Term
+\end{lstlisting}
+\lstscalainline{C} is a \lstscalainline{Double} or \lstscalainline{Int} singleton value type. By using \lstscalainline{scala.compiletime.constValue[C]} we can extract the singleton value from a singleton type. 
+
+If we combine all functionalities described above we gain the possibility to define a function and get its derivative entirely at type level:
+\begin{lstlisting}[language=scala]
+    type F = V[2.2] * X + X * X * X
+    val df: D[F] = initFromType[D[F]]
+    val result: Double = df(3)
+\end{lstlisting}
+Unfortunately computing a result at type level is impossible because we want to support decimal numbers. Type level calculation with integers on the other hand would be very possible and is included in Scala 3. To allow decimals we have to use a function \lstscalainline{initFromType} which recursively matches the provided type at compile time and constructs a function which just computes the result later at runtime. As if this init-function wasn't inelegant enough we faced another much bigger problem. The compile time when differentiating three multiplications in a row was already at about 20 s and 4 multiplications bumped it up to over 1 min (5 multiplications took too long to test). The solution to this problem was rather anticlimactic. By updating the Scala compiler to the newest version (3.0.2 as of now) compile times are now consistently at about 1 s independent of expression complexity. \todo{Gain of type safety?} \todo{Explain Peano numbers?}
