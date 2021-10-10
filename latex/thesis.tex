@@ -65,11 +65,20 @@
 %\usepackage{longtable} % multi-page tables
 %\usepackage{xltabular} % both features from tabularx and longtable
 \usepackage{booktabs}   % better looking style for table rulers
-%\usepackage{mathtools} % better than amsmath
-%\usepackage{amssymb}   % more symbols
+\usepackage{mathtools} % better than amsmath
+\usepackage{amssymb}   % more symbols
 \usepackage{siunitx}   % si-units
 
+\usepackage{esdiff}
+
 \newcommand{\todo}[1]{{\color{red}{\textbf{TODO: }#1}}}
+
+
+
+\newcommand{\R}{\mathbb{R}}
+
+
+
 
 \begin{document}
 
@@ -101,7 +110,7 @@
 
 \tableofcontents
 
-
+\input{content/introduction}
 \input{content/implementation/implementation}
 
 
@@ -133,7 +142,7 @@
 			\subsection{ -- First try: .map() "closes" monad [1/2] }
 			\subsection{ -- Second try: Chaining of functions with global tape [1/2]}
 
-	\section{Backpropagtion without mutation (functional)}
+	\section{Backpropagation without mutation (functional)}
 		\subsection{Why functional? (state, multiple calculations, reasoning) [1/2]}
 		\subsection{CPS, MonadCPS [1]}
 		\subsection{Tape}

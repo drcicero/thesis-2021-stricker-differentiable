@@ -18,7 +18,7 @@ As this was just a small experiment we leave this here without much explanation 
 
 
 \subsection{Operator overloading with dual numbers}
-\todo{Highly inspired by lantern paper (link to it or github)}
+\todo{Following definitions, implementations by lantern paper (link to it or github)}
 Rewriting code that way has one problem. We loose the actual result of our formula and only get the derivative (or we would have to calculate both separately). Instead we could use a structure that consists of two values, the normal result of the operation and its derivative. Such a construct is called a "dual number" \todo{link Wikipedia or maybe a paper?} and could look like this:
 \lstscala{implementation/DualNumber.scala}{3}{3}
 To implement an operation on these we have to define the actual computation and additionally how to compute the derivative:
@@ -30,7 +30,7 @@ Differentiation of a function $f$ at $x = 3$ could then look like this:
 
 
 \subsection{Static typing taken too far (Or: Let the compiler code for you)}
-To explain the following approach we first have to look at match types which are essentially functions but at type level. We put one type in, look at it and decide which type to "return". It gets clear with the following example taken from the Scala 3 docs \cite{matchTypesScala3}. You could get the element type of any list-like type:
+To explain the following approach we first have to look at match types which are essentially functions but at type level. We put one type in, look at it and decide which type to ``return''. It gets clear with the following example taken from the Scala 3 docs \cite{matchTypesScala3}. You could get the element type of any list-like type:
 \begin{lstlisting}[language=scala]
     type Elem[X] = X match
         case String => Char
@@ -60,7 +60,7 @@ Line 7 and 9 still look suspicious. What are integers doing as a type parameter?
 \end{lstlisting}
 \lstscalainline{C} is a \lstscalainline{Double} or \lstscalainline{Int} singleton value type. By using \lstscalainline{scala.compiletime.constValue[C]} we can extract the singleton value from a singleton type. 
 
-If we combine all functionalities described above we gain the possibility to define a function and get its derivative entirely at type level:
+If we combine all functionalities described above we gain the possibility to define a function and derive its derivative entirely at type level:
 \begin{lstlisting}[language=scala]
     type F = V[2.2] * X + X * X * X
     val df: D[F] = initFromType[D[F]]

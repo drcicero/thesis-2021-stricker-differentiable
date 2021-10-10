@@ -1,0 +1,51 @@
+\section{Reverse mode differentiation}
+\todo{Whole chapter of Wikipedia (better citation)}
+
+In contrast to forward mode differentiation which benefits highly from our intuition, reverse mode is not straight forward to implement and we even have to work constantly against our intuition. To make this difference clear let's go through an example taken from Wikipedia \cite{forwardAccumulationWiki}:
+\newcommand{\yExampleDiff}{y = x_1x_2 + \sin{x_1} = w_1w_2 + \sin{w_1} = w_3 + w_4 = w_5}
+\[ \yExampleDiff \]
+We gave every possible subexpression a name $w_i$. Note that the outmost expression has the largest index and the innermost expressions have the smallest indices. Order of indices at the same level do not matter.
+
+In forward mode we calculate 
+\[ \dot w_i \coloneqq \diff{w_i}{x} \]
+from small $i$ to largest. For example if we know $\dot w_1$ and $\dot w_2$ we can (by using the product rule) calculate 
+\[ \dot w_3 = w_1 \dot w_2 + \dot w_1 w_2. \]
+With that (and $\dot w_4$) we can then find $\dot w_5$. Note that as stated above we need to know the initial value of $x_1$ and $x_2$. With one variable we would set it to $\dot x = \diff{x}{x} = 1$ and calculate our result. With two variables we have to do two passes through the whole calculation, one with $\dot x_1 = 1, \dot x_2 = 0$ and one with $\dot x_1 = 0, \dot x_2 = 1$. This is the whole motivation to do reverse mode differentiation because it only needs one pass to calculate the same result. In fact for a function $f: \R^n \to \R^m$ forward mode has to do $n$ passes and reverse mode has to do $m$ passes. Usually in machine learning tasks you have functions with $n >\! \!> m$.
+
+\newcommand{\overw}[1]{\overline{w}_#1}
+\todo{Cite Wikipedia reverse mode}
+For reverse mode we have to shift our focus from $\dot w_i$ to another main expression of concern, namely 
+\[ \overw{i} \coloneqq \diff{y}{w_i} \]
+also called the adjoint. Instead of calculating the derivative of an subexpression $w_i$ with respect to $x$ it expresses the derivative of $y$ with respect to a particular subexpression $w_i$ of $y$. Why this expression concerns us now gets clear after looking at the corresponding usage of the chain rule \todo{Define chain rule?} which both differentiation styles are based on but are used differently for both derivation styles. The chain rule for backward mode differentiation replaces each occurrence of $\overw{i}$ recursively \todo{Forward mode replaces all $\dot w_i$ instead.}:
+\newcommand{\diffw}[2]{\diff{w_#1}{w_#2}}
+\[ \diff{y}{x} = \diff{y}{w_1}\diff{w_1}{x} = \bigg(\diff{y}{w_2}\diffw{2}{1}\bigg)\diff{w_1}{x} = \bigg(\bigg(\diff{y}{w_3}\diffw{3}{2}\bigg)\diffw{2}{1}\bigg)\diff{w_1}{x} = ... \]
+On first sight it might look like we traverse from $i = 1$ to $5$ but as you calculate the expression in the innermost parentheses first one can easily see that the iteration goes from large to small opposed to forward mode. This usage of the chain rule essentially dictates how we calculate the result:
+\[ \yExampleDiff \]
+\begin{align*}
+    \overw{5} &= \diff{y}{w_5} = 1 \\
+    \overw{4} &= \diff{y}{w_4} = \diff{y}{w_5}\diffw{5}{4} = \overw{5}\diffw{5}{4} = 1 \\
+    \overw{3} &= \todo{}
+\end{align*}
+
+\todo{Explain how multiple paths come together ($\overw{1}^{a/b}$)}
+
+% Let us look at a function $y$:
+% \newcommand{\fgh}{f \circ g \circ h}
+% \newcommand{\gh}{g \circ h}
+% \[ y = \fgh = f(g(h(x)))  \]
+% We would compute its derivative intuitively (in forward mode) like in the case above while reverse mode can be seen at the bottom:
+% \begin{equation*}
+%     \diff{y}{x} = \diff{\fgh}{x} =
+%     \begin{dcases}
+%         \begin{rcases}
+%             \diff{\fgh}{\gh}\diff{\gh}{x} \\
+%             \diff{\fgh}{h}\diff{h}{x}\\
+%         \end{rcases}
+%     \end{dcases}    
+%     = \diff{\fgh}{\gh}\diff{\gh}{h}\diff{h}{x} = f' \cdot g' \cdot h'
+% \end{equation*}
+
+
+
+
+\input{content/implementation/reverseMode/cps.tex}
