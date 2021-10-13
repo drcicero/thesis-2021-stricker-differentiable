@@ -23,7 +23,7 @@ Rewriting code that way has one problem. We loose the actual result of our formu
 \lstscala{implementation/DualNumber.scala}{3}{3}
 To implement an operation on these we have to define the actual computation and additionally how to compute the derivative:
 \lstscala{implementation/DualNumber.scala}{3}{12}
-As we can see this comes down to translating mathematic symbolic differentiation rules into code (lines 4 and 9). How to define constants and the variable which we differentiate our function with respect to \todo{englisch spaek you can?} also comes naturally:
+As we can see this comes down to translating mathematic symbolic differentiation rules into code (lines 4 and 9). How to define constants and the variable which we differentiate our function with respect to \todogrammar also comes naturally:
 \lstscala{implementation/DualNumber.scala}{14}{15}
 Differentiation of a function $f$ at $x = 3$ could then look like this:
 \lstscala{implementation/DualNumber.scala}{18}{24}

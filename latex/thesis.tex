@@ -71,9 +71,16 @@
 
 \usepackage{esdiff}
 
-\newcommand{\todo}[1]{{\color{red}{\textbf{TODO: }#1}}}
+\usepackage{caption}
+	% \captionsetup[lstlisting]{labelfont={bf}, labelsep=colon, justification=centering}
+
+\newcommand{\reflst}[1]{\hyperref[#1]{listing} \ref{#1}} % reference listings
 
 
+\newcommand{\todocolor}[2]{{\color{#1}{\textbf{TODO: }#2}}}
+\newcommand{\todo}[1]{\todocolor{red}{#1}}
+\newcommand{\todogrammar}{\todocolor{orange}{Englisch spaek yu kan¿}}
+\newcommand{\todowording}{\todocolor{green}{wording?}}
 
 \newcommand{\R}{\mathbb{R}}
 
