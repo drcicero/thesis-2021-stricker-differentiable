@@ -1,7 +1,7 @@
 \section{Reverse mode differentiation}
 \todo{Whole chapter of Wikipedia (better citation)}
 
-In contrast to forward mode differentiation which benefits highly from our intuition, reverse mode is not straight forward to implement and we even have to work constantly against our intuition. To make this difference clear let's go through an example taken from Wikipedia \cite{forwardAccumulationWiki}:
+In contrast to forward mode differentiation which benefits highly from our intuition, reverse mode is not straight forward to implement and we even have to work constantly against our intuition. To make this difference clear let's go through an example taken from Wikipedia \cite{forwardAccumulationWiki}: \todo{align on equal sign}
 \newcommand{\yExampleDiff}{y = x_1x_2 + \sin{x_1} = w_1w_2 + \sin{w_1} = w_3 + w_4 = w_5}
 \[ \yExampleDiff \]
 We gave every possible subexpression a name $w_i$. Note that the outmost expression has the largest index and the innermost expressions have the smallest indices. Order of indices at the same level do not matter.
@@ -34,7 +34,7 @@ This usage of the chain rule essentially dictates how we calculate the result. O
     \overw{1}^b &= \diffyw{1} = \diffyw{5}\diffw{5}{1} = \bigg(\diffyw{5}\diffw{5}{4}\bigg)\diffw{4}{1} = \overw{4}\diffw{4}{1} = \cos(w_1) \\
     \overw{1} &= \overw{1}^a + \overw{1}^b
 \end{align*}
-We had to realise that $w_1$ appears in two ``calculation branches'' and had to handle them separately, similar to the simple cases above. Lastly all results of all branches then have to be summed (implying that if $w_1$ would occur n times then we had to sum n results). 
+We had to realise that $w_1$ appears in two ``calculation branches'' and had to handle them separately, but similar to the simple cases above. Lastly all results of all branches then have to be summed (implying that if $w_1$ would occur n times we had to sum n results).
 
 The skilled reader could complain that this isn't as complicated as advertised \todowording earlier \todo{Did I?}. This is true for a human who can overlook the whole expression including all its subexpressions. A program on the other hand often only has a limited view of the whole expression. Consider this:
 \begin{lstlisting}[language=scala, label={lst:reverseProgramVsHuman}, caption={Limited context of a program opposed to a human}]
@@ -44,18 +44,18 @@ The skilled reader could complain that this isn't as complicated as advertised \
 \end{lstlisting}
 At definition time of \lstscalainline{w3} we don't have enough information to calculate any derivative because only after adding all context with the definition of \lstscalainline{y} we know all branches where \lstscalainline{w1} occurs. In fact \lstscalainline{y} could also be just another subexpression of a bigger calculation. Without properly defining the problem at hand, one can see from this example that implementing reverse mode is at least more complicated than implementing forward mode differentiation. \todowording Directly using dual numbers as is doesn't suffice for reverse differentiation.
 
-The main takeaway from this elaborate \todowording example is an important pattern which we will be utilizing to implement reverse mode differentiation. The second last term of every calculation of $w_i^z$ with $z \in \{a, b, ...\}$ (above we sometimes omitted $z$) \todo{explain z better?, we could also write $\overw{5} = \overw{5}^a = ...$ instead} has always the following pattern:
+The main takeaway from this elaborate \todowording example is an important pattern which we will be utilizing to implement reverse mode differentiation. The second last term of every calculation of $w_i^z$ with $z \in \{a, b, ...\}$ (above we mostly omitted $z$) \todo{explain z better?, we could also write $\overw{5} = \overw{5}^a = ...$ instead} has always the following pattern:
 \newcommand{\defoverwiz}{\overw{i}^z = \overw{p}\diff{w_p}{w_i^z}}
 \[ \defoverwiz \]
-for some $p$ which isn't at all $p$ random. $w_p$ is always the parent expression of that specific occurrence $w_i^z$ of $w_i$. To make that ``$z$'' clear we could have written $y$ like (notice the added superscripts $a$ and $b$)
+for some $p$ which isn't at all random. $w_p$ is always the parent expression of that specific occurrence $w_i^z$ of $w_i$. To make that ``$z$'' clear: We could have written $y$ like (notice the added superscripts $a$ and $b$)
 \[ y = w_1^a w_2^a + \sin{w_1^b} = w_3^a + w_4^a = w_5^a \]
-to further emphasize distinct occurrences of expressions $w_i$. Actually $w_i$ can only occur in multiple times (i.e. having a ``$b$''superscript) if $w_i = x_i$, i.e. it is one of our variables which we differentiate our function with respect to \todogrammar. In other words: equal expressions are not counted as multiple occurrences and for that matter only $x_i$ count.
+to further emphasize distinct occurrences of expressions $w_i$. Actually $w_i$ can only occur multiple times (i.e. having a ``$b$''superscript) if $w_i = x_i$, i.e. it is one of our variables which we differentiate our function with respect to \todogrammar. In other words: Equal expressions are not counted as multiple occurrences and for that matter only $x_i$ count.
 
-When boiling down  
+When boiling down
 \[ \overw{i}^z = \overw{p}\diff{w_p}{w_i^z} = \diffyw{p}\diff{w_p}{w_i^z} \]
-further we realize that we have to compute the derivative of the parent expression with respect to $w_i^z$ which is fortunately most of the time very easy because a parent expression will always be an atomic operation (e.g. (*), (+), (-), $\sin$) and $w_i^z$ is always an direct argument. Because we usually know the derivative of each of our atomic operations, we can simply handle every case, e.g.:
+further we realize that we have to compute the derivative of the parent expression with respect to $w_i^z$. This is fortunately comparatively easy. A parent expression will always be an atomic operation (e.g. (*), (+), (-), $\sin$) and $w_i^z$ is always a direct argument. Because we usually know the derivative of each of our atomic operations, we can simply handle every case, e.g.:
 \[ \diff{w_p}{w_i^z} = \diff{(w_i^z \cdot w_k)}{w_i^z} = w_k \]
-The last and main task is to find $\overw{p}$ the adjoint of the parent expression (i.e. the derivative of $y$ with respect to $w_p$ which can only occur once because it can't be an $x_i$ as clarified above). This is a recursive problem but unfortunately in reverse order because information flows from outer expression to inner \todo{or inner to outer?, just remove?} as intuitively shown in \reflst{lst:reverseProgramVsHuman}. Solving this ``reversed flow of information'' elegantly, efficiently or easily to reason about is the main goal of the following implementations. \todo{define better goal according to goal of theses?}
+The remaining and main task is to find $\overw{p}$, \todopunctuation the adjoint of the parent expression (i.e. the derivative of $y$ with respect to $w_p$ which can only occur once because it can't be a $x_i$). This is a recursive problem but unfortunately in reverse order because information flows from outer expression to inner \todo{or inner to outer?, just remove?} as intuitively shown in \reflst{lst:reverseProgramVsHuman} \todo{Capital ``L'' for ``listing''?}. Solving this ``reversed flow of information'' elegantly, efficiently or easily to reason about is the main goal of the following implementations. \todo{define better goal according to goal of my theses?}
 
 % Let us look at a function $y$:
 % \newcommand{\fgh}{f \circ g \circ h}
