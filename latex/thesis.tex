@@ -18,7 +18,7 @@
 	\definecolor{keywordcolour}{RGB}{204,120,50}
 	% \definecolor{keywordcolour}{RGB}{0,0,150}
 	\lstdefinestyle{jetbrains}{
-		backgroundcolor=\color{backcolour},   
+		% backgroundcolor=\color{backcolour},   
 		commentstyle=\color{stringcolour},
 		keywordstyle=\color{keywordcolour},
 		numberstyle=\tiny\color{codegray},
@@ -35,13 +35,32 @@
 		showtabs=false,                  
 		tabsize=2
 	}
-	\lstset{style=jetbrains}
+	\lstset{
+		style=jetbrains,
+		language=scala,
+		morekeywords={end},
+		escapebegin=\color{stringcolour}
+	}
 \usepackage{scrhack} % to prevent an error when using a self defined listing command
+% math expressions in 
+\usepackage{xcolor}% http://ctan.org/pkg/listings
+\usepackage[framemethod=TikZ]{mdframed}% http://ctan.org/pkg/mdframed
+\usepackage{etoolbox}{% http://ctan.org/pkg/etoolbox
+	\mdfdefinestyle{listingstyle}{%
+		backgroundcolor=backcolour,
+		outerlinewidth=0.25pt,
+		outerlinecolor=black,
+		innerleftmargin=13pt,
+		innerrightmargin=5pt,
+		innertopmargin=0pt,
+		innerbottommargin=0pt
+	}
+	\BeforeBeginEnvironment{lstlisting}{\begin{mdframed}[style=listingstyle]}
+	\AfterEndEnvironment{lstlisting}{\end{mdframed}}
 
-\newcommand{\lstscala}[3]{\lstinputlisting[language=scala, firstline=#2, lastline=#3]{listings/#1}}
-\newcommand{\lstscalacaption}[5]{\lstinputlisting[language=scala, firstline=#2, lastline=#3, label={lst:#5}, caption={#4}]{listings/#1}}
-\newcommand{\lstscalainline}[1]{\lstinline[language=scala]{#1}}
 
+\newcommand{\lstscala}[3]{\lstinputlisting[firstline=#2, lastline=#3]{listings/#1}}
+\newcommand{\lstscalacaption}[5]{\lstinputlisting[firstline=#2, lastline=#3, label={lst:#5}, caption={#4}]{listings/#1}}
 
 
 
@@ -82,6 +101,7 @@
 \newcommand{\todogrammar}{\todocolor{orange}{Englisch spaek yu kan¿}}
 \newcommand{\todopunctuation}{\todocolor{teal}{,.?!}}
 \newcommand{\todowording}{\todocolor{green}{wording?}}
+\newcommand{\todocite}[1]{\todocolor{purple}{Cite #1}}
 
 \newcommand{\R}{\mathbb{R}}
 
@@ -126,47 +146,47 @@
 % \IMRADlabel{introduction}
 % \input{content/introduction}
 \chapter{Introduction [1/2]}
-	\section{Motivation, Why? -> ML needs this for Newton etc}
+\section{Motivation, Why? -> ML needs this for Newton etc}
 % \IMRADlabel{methods}
-	\section{Overview}
-		\subsection{Short summary of all implementation styles (i.e. CPS, Monad, tape, macro) [1/2]}
-	\section{Details}
-		\subsection{Example backpropagation by hand [1]}
-		\subsection{Go through a real ML task (the implemented test) with "grad" as blackbox -> defines "goal" [1]}
+\section{Overview}
+\subsection{Short summary of all implementation styles (i.e. CPS, Monad, tape, macro) [1/2]}
+\section{Details}
+\subsection{Example backpropagation by hand [1]}
+\subsection{Go through a real ML task (the implemented test) with "grad" as blackbox -> defines "goal" [1]}
 % \input{content/implementation}
 
 \chapter{Implementation}
-	\section{Forward mode [1]}
-		\subsection{by operator overloading (including macros)}
-		\subsection{Match type implementation (and bad performance). Explain type level calculations (Peano). Pro/Con [1]}
+\section{Forward mode [1]}
+\subsection{by operator overloading (including macros)}
+\subsection{Match type implementation (and bad performance). Explain type level calculations (Peano). Pro/Con [1]}
 
-	\section{Backpropagation with mutation}
-		\subsection{Tape [1/2]} %maybe first?
-		\subsection{CPS}
-			\subsection{Explain Continuations (without shift/reset) [1/2]}
-			\subsection{Encode backward pass as continuation [1/2]}
-		\subsection{MonadCPS}
-			\subsection{ -- For-comprehensions (flatMap, map) [1/2]}
-			\subsection{ -- First try: .map() "closes" monad [1/2] }
-			\subsection{ -- Second try: Chaining of functions with global tape [1/2]}
+\section{Backpropagation with mutation}
+\subsection{Tape [1/2]} %maybe first?
+\subsection{CPS}
+\subsection{Explain Continuations (without shift/reset) [1/2]}
+\subsection{Encode backward pass as continuation [1/2]}
+\subsection{MonadCPS}
+\subsection{ -- For-comprehensions (flatMap, map) [1/2]}
+\subsection{ -- First try: .map() "closes" monad [1/2] }
+\subsection{ -- Second try: Chaining of functions with global tape [1/2]}
 
-	\section{Backpropagation without mutation (functional)}
-		\subsection{Why functional? (state, multiple calculations, reasoning) [1/2]}
-		\subsection{CPS, MonadCPS [1]}
-		\subsection{Tape}
-			\subsection{ -- First try: naive (val, var difference -> multiple updates) [1/2]}
-			\subsection{ -- Second try: Every node has to be calculated once [1]}
-		\subsection{Con: (speed, ...) [1]}
+\section{Backpropagation without mutation (functional)}
+\subsection{Why functional? (state, multiple calculations, reasoning) [1/2]}
+\subsection{CPS, MonadCPS [1]}
+\subsection{Tape}
+\subsection{ -- First try: naive (val, var difference -> multiple updates) [1/2]}
+\subsection{ -- Second try: Every node has to be calculated once [1]}
+\subsection{Con: (speed, ...) [1]}
 
-    \section{Macros? [2]}
+\section{Macros? [2]}
 
 
 % \IMRADlabel{results}
 \chapter{Evaluation}
-	\section{List all comparison metrics (Runtime, LOC, compile time) [1]}
-	\section{Interpretation [1/2]}
+\section{List all comparison metrics (Runtime, LOC, compile time) [1]}
+\section{Interpretation [1/2]}
 \chapter{Related work}
-	\section{lantern paper [1/2]}
+\section{lantern paper [1/2]}
 
 % \IMRADlabel{discussion}
 \chapter{Conclusion [1/2]}

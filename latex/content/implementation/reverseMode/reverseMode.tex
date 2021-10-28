@@ -19,13 +19,13 @@ from small $i$ to largest. For example if we know $\dot w_1$ and $\dot w_2$ we c
 \[ \dot w_3 = w_1 \dot w_2 + \dot w_1 w_2. \]
 With that (and $\dot w_4$) we can then find $\dot w_5$. Note that as stated above we need to know the initial value of $x_1$ and $x_2$. With one variable we would set it to $\dot x = \diff{x}{x} = 1$ and calculate our result. With two variables we have to do two passes through the whole calculation, one with $\dot x_1 = 1, \dot x_2 = 0$ and one with $\dot x_1 = 0, \dot x_2 = 1$. This is the whole motivation to do reverse mode differentiation because it only needs one pass to calculate the same result. In fact for a function $f: \R^n \to \R^m$ forward mode has to do $n$ passes and reverse mode has to do $m$ passes. Usually in machine learning tasks you have functions with $n >\! \!> m$.
 
-\newcommand{\overw}[1]{\overline{w}_#1}
-\newcommand{\diffyw}[1]{\diff{y}{w_#1}}
+\newcommand{\overw}[1]{\overline{w}_{#1}}
+\newcommand{\diffyw}[1]{\diff{y}{w_{#1}}}
 \todo{Cite Wikipedia reverse mode}
 For reverse mode we have to shift our focus from $\dot w_i$ to another main expression of concern, namely
 \[ \overw{i} \coloneqq \diffyw{i} \]
 also called the adjoint. Instead of calculating the derivative of an subexpression $w_i$ with respect to $x$ it expresses the derivative of $y$ with respect to a particular subexpression $w_i$ of $y$. Why this expression concerns us now gets clear after looking at the corresponding usage of the chain rule \todo{Define chain rule?} which both differentiation styles are based on. Forward mode replaces all occurrences of $\dot w_i$ by using the chain rule which is the reason why that expression concerned us previously. The chain rule for backward mode is instead used to replace each occurrence of $\overw{i}$ recursively:
-\newcommand{\diffw}[2]{\diff{w_#1}{w_#2}}
+\newcommand{\diffw}[2]{\diff{w_{#1}}{w_{#2}}}
 \[ \diff{y}{x} = \diffyw{1}\diff{w_1}{x} = \bigg(\diffyw{2}\diffw{2}{1}\bigg)\diff{w_1}{x} = \bigg(\bigg(\diffyw{3}\diffw{3}{2}\bigg)\diffw{2}{1}\bigg)\diff{w_1}{x} = ... \]
 On first sight it might look like we traverse from $i = 1$ to $5$ but as one calculates the expression in the innermost parentheses first one can easily see that the iteration actually goes from large to small index opposed to forward mode \todogrammar.
 
@@ -44,18 +44,24 @@ This usage of the chain rule essentially dictates how we calculate the result. O
 We had to realise that $w_1$ appears in two ``calculation branches'' and had to handle them separately, but similar to the simple cases above. Lastly all results of all branches then have to be summed (implying that if $w_1$ would occur n times we had to sum n results).
 
 The skilled reader could complain that this isn't as complicated as advertised \todowording earlier \todo{Did I?}. This is true for a human who can overlook the whole expression including all its subexpressions. A program on the other hand often only has a limited view of the whole expression. Consider this:
-\begin{lstlisting}[language=scala, label={lst:reverseProgramVsHuman}, caption={Limited context of a program opposed to a human}]
-    def w3 = w1 * w2
-    def w4 = sin(w1)
-    def y =  w3 + w4
+\todo{Shorter listing name; does not show the limited context}
+\begin{lstlisting}[label={lst:reverseProgramVsHuman}, caption={Limited context of a program opposed to a human}]
+def w3 = w1 * w2
+def w4 = sin(w1)
+def y =  w3 + w4
 \end{lstlisting}
-At definition time of \lstscalainline{w3} we don't have enough information to calculate any derivative because only after adding all context with the definition of \lstscalainline{y} we know all branches where \lstscalainline{w1} occurs. In fact \lstscalainline{y} could also be just another subexpression of a bigger calculation. Without properly defining the problem at hand, one can see from this example that implementing reverse mode is at least more complicated than implementing forward mode differentiation. \todowording Directly using dual numbers as is doesn't suffice for reverse differentiation.
+At definition time of \lstinline{w3} we don't have enough information to calculate any derivative because only after adding all context with the definition of \lstinline{y} we know all branches where \lstinline{w1} occurs. In fact \lstinline{y} could also be just another subexpression of a bigger calculation. Without properly defining the problem at hand, one can see from this example that implementing reverse mode is at least more complicated than implementing forward mode differentiation. \todowording Directly using dual numbers as is doesn't suffice for reverse differentiation.
 
 The main takeaway from this elaborate \todowording example is an important pattern which we will be utilizing to implement reverse mode differentiation. The second last term of every calculation of $w_i^z$ with $z \in \{a, b, ...\}$ (above we mostly omitted $z$) \todo{explain z better?, we could also write $\overw{5} = \overw{5}^a = ...$ instead} has always the following pattern:
 \newcommand{\defoverwiz}{\overw{i}^z = \overw{p}\diff{w_p}{w_i^z}}
 \[ \defoverwiz \]
 for some $p$ which isn't at all random. $w_p$ is always the parent expression of that specific occurrence $w_i^z$ of $w_i$. To make that ``$z$'' clear: We could have written $y$ like (notice the added superscripts $a$ and $b$)
-\[ y = w_1^a w_2^a + \sin{w_1^b} = w_3^a + w_4^a = w_5^a \]
+\begin{alignat*}{2}
+    y & = x_1x_2 &  & + \sin{x_1} \\
+      & = w_1^a w_2^a &  & + \sin{w_1^b} \\
+      & = w_3^a    &  & + w_4^a       \\
+      & =        &  & w_5^a
+\end{alignat*}
 to further emphasize distinct occurrences of expressions $w_i$. Actually $w_i$ can only occur multiple times (i.e. having a ``$b$''superscript) if $w_i = x_i$, i.e. it is one of our variables which we differentiate our function with respect to \todogrammar. In other words: Equal expressions are not counted as multiple occurrences and for that matter only $x_i$ count.
 
 When boiling down
