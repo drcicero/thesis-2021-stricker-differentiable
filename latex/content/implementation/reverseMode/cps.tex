@@ -2,78 +2,88 @@
 
 \todocite{Lantern paper}
 
-For our first reverse mode attempt \todowording we want to build on already implemented and understood code, i.e. our dual number implementation from \reflst{lst:lst:forwardDualNumber}. A very similar structure can be achieved by using continuation passing style (CPS). This is just a fancy term \todowording for the frequently used callbacks (e.g. for frontend web development) \todocite{?}. Essentially you pass the ``rest of the calculation'' to the function instead of using its return value and manually applying the ``rest'' on that result. To make things clear, \todopunctuation consider chaining two arbitrary functions (with unspecified types \lstinline{A, B, C, D}) as usual:
-\todo{Add "composed" function of lines 11-13 (in both examples)}
-\begin{lstlisting}
+Continuation is just a fancy term \todowording for the frequently used callbacks (e.g. for frontend web development) \todocite{?}. Essentially you pass the ``rest of the calculation'' to the function instead of using its return value and manually applying the ``rest'' on that result. To make things clear, \todopunctuation consider chaining two arbitrary functions (with unspecified types \lstinline{A, B, C, D}) as usual:
+\begin{lstlisting}[caption={Ordinary chaining}, label={lst:ordinaryChaining}]
 def first(x: A): B = ???
 def second(x: B): D = ???
 
+def chained(x: A): D =
+    val firstResult: B = first(a)
+    second(firstResult)
+
 val a: A = ???
-val firstResult: B = first(a)
-val secondResult: D = second(firstResult)
+val chainedResult: D = chained(a)
+
 \end{lstlisting}
-And now an equal implementation but with continuations:
-\begin{lstlisting}
+And now an equal implementation but in CPS:
+\begin{lstlisting}[caption={CPS chaining}, label={lst:cpsChaining}]
 def first[R](x: A)(rest: B => R): R = ???
 def second[R](x: B)(rest: D => R): R = ???
 
+def chained[R](x: A)(rest: D => R): R =
+    first(a) { (firstResult: B) => 
+        second(firstResult) { rest }
+    }    
+    
 val a: A = ???
-val secondResult: D = 
-    first(a) { firstResult => 
-        second(firstResult) { identity }
-    }
+val chainedResult: D = chained(a) { identity }
 \end{lstlisting}
-Notice that the input type of \lstinline{rest} in line 1 is \lstinline{B} which matches the result type of \lstinline{first} from the ordinary example above (and analogously for \lstinline{D} and \lstinline{second}). To show the general equality of both approaches we also introduced type parameter \lstinline{R} to both functions. This is needed to support arbitrary ``second'' functions even if they do not return exactly \lstinline{D}. In line 9 we pass \lstinline{identity} to \lstinline{second} to mark the ``end'' of the calculation. If we had a third operation, we would pass a further nested lambda which calls \lstinline{third} (and so on for \lstinline{fourth}, \lstinline{fifth}, ...). When following CPS strictly, every function takes a continuation. and ordinary variables are never used. Lambdas with named parameters fullfil that role instead (as seen with \lstinline{firstResult} above).
+Notice that the \emph{input} type of \lstinline{rest} in \lstinline{first} of \reflst{lst:cpsChaining} is \lstinline{B}. This matches the \emph{result} type of \lstinline{first} in \reflst{lst:ordinaryChaining} (and analogously for \lstinline{D} and \lstinline{second}). To show the general equality of both approaches we also had to introduce type parameter \lstinline{R} to all functions. This is needed to support arbitrary \lstinline{rest} functions even if they do not return exactly \lstinline{D}. In line 10 of \reflst{lst:cpsChaining} we pass \lstinline{identity} to \lstinline{chained} to mark the ``end'' of the calculation. We could have passed another arbitrary operation instead, similarly to how we could have applied arbitrary operations on \lstinline{chainedResult} in \reflst{lst:ordinaryChaining}. When following CPS strictly, every function takes a continuation and ordinary variables are never used. Lambdas with named parameters fullfil that role instead, as seen with \lstinline{firstResult} in line 5.
 \todo{Add theoretical explanation of code above (\url{https://pbs.twimg.com/media/FAjvTXRXEAwKuT-?format=png&name=small})}
 
-Using this, at first sight rather obscure, feature we can implement reverse mode very similar to \reflst{lst:lst:forwardDualNumber}:
+Using this, at first glance rather obscure, feature we can implement reverse mode using dual numbers:
 \begin{lstlisting}[mathescape=true]
 case class Dual(x: Double, var adjoint: Double):
     def *(that: Dual)(k: Dual => Dual): Dual =
-        // Compute result of current operation and init adjoint with 0
-        val localResult = Dual(this.x * that.x, 0) 
+        // $ w_p $
+        val localResult = Dual(this.x * that.x, 0)
 
-        // "wait" for all remaining (nested) calculations to finish which implicitly calculate the adjoint of the current operation (localResult.adjoint)
         val globalResult = k(localResult)
+        
+        // $ i \in \{ \text{this}, \text{that} \} $
+        def addPartialAdjoint(
+            thisOrThat: Dual, 
+            derivativeWrtThisOrThat: Double
+        ) =
+            // $ \overw{i}^z = \overw{p} \diff{w_p}{w_i^z} $ 
+            val partialAdjoint = 
+                localResult.adjoint * derivativeWrtThisOrThat
+            // $ \overw{i} \pluseq \overw{i}^z $
+            thisOrThat.adjoint += partialAdjoint
 
-        // We can now compute the partial adjoint of the current computation branch for "this" and "that" respectively. If "this" or "that" occur in other computation branches then that brach is responsible for adding its partial adjoint.
-
-        // += $\overw{\text{this}}^z$
-        this.adjoint +=
-            // $\overw{\text{this}}^z$
-            that.x // $\diff{w_p}{w_{\text{this}}^z}$
-                * localResult.adjoint // $\overw{p}$
-
-        // += $\overw{\text{that}}^z$
-        that.adjoint +=
-            this.x // $\diff{w_p}{w_{\text{that}}^z}$
-                * localResult.adjoint  // $\overw{p}$
+        addPartialAdjoint(this, that.x) // $ i = \text{this} $
+        addPartialAdjoint(that, this.x) // $ i = \text{that} $
 
         globalResult
     end *
 
     // Analogous to (*)
-    def +(that: Dual)(k: Dual => Dual): Dual =
-        val localResult = Dual(this.x + that.x, 0)
-        val globalResult = k(localResult)
-        this.adjoint +=
-            1 // $\diff{w_p}{w_{\text{this}}^z}$
-                * localResult.adjoint // $\overw{p}$
-        that.adjoint +=
-            1 // $\diff{w_p}{w_{\text{that}}^z}$
-                * localResult.adjoint // $\overw{p}$
-        globalResult
-    end +
+    def +(that: Dual)(k: Dual => Dual): Dual = ???
+    def sin(k: Dual => Dual): Dual = ???
 end Dual
+\end{lstlisting}
+Compared to forward dual numbers (\reflst{lst:forwardDualNumber}) we changed the name of the second member of \lstinline{Dual} to \lstinline{adjoint} to reflect the shift in focus from $\dot w_i$ to $\overw{i}$. The comments add translations from code expressions into their mathematic notation from \refsec{sec:reverseMode}. $w_p$ in line 13 means \todowording the parent expression, e.g. for multiplication we would write it like this:
+\begin{align*}
+    w_{\text{this}} &= \text{\lstinline{this}} \\
+    w_{\text{that}} &= \text{\lstinline{that}} \\
+    w_p &= w_{\text{this}} \cdot w_{\text{that}}
+\end{align*}
+The helper function \lstinline{addPartialAdjoint} (line 9) essentially just executes the mathematical expressions in lines 13 and 16 but generalizes over for which subexpression ($\overw{\text{this}}^z$ or $\overw{\text{that}}^z$) to compute the partial adjoint. The \lstinline{partialAdjoint} (line 14) is the adjoint of this specific occurrence of $ w_i^z $. Remember that we have to sum the partial adjoints of all occurrence to get the full adjoint. Exactly that happens in line 17 by mutating \lstinline{thisOrThat.adjoint}. Every expression is responsible to add the partial adjoints of their subexpressions. By translating everything into mathematical notation, one can clearly see big similarities to the mathematical foundations \todowording of reverse mode differentiation seen in \refsec{sec:reverseMode}.
 
+The main difference is line 6 where we call the continuation \lstinline{k}. It represents the rest of the computation as stated previously. In this context specifically, it represents all further operations that might use the passed \lstinline{localResult}. Note that those further operations are ancestors and not children or in other words they are outer and not inner operations.\todowording The first job of the continuation is to do an ``forward pass'' through the rest of the operations by calculating the regular result (line 4) of the next operation and calling the next continuation. This recursive ``forward pass'' eventually finishes by calling a \lstinline{k} which does not call another continuation. At this point we found the recursion anchor and have built a stack of calls as usual with recursive algorithms. This built-up stack now naturally tears down \todowording in \emph{reverse order}. This was our primary goal. We had to calculate the regular results in ``normal'' order (inner to outer expression) but the adjoint is naturally calculated in reverse order (\reffig{fig:informationFlow}). From here on therefore the ``reverse pass'' starts. To go back to our running example, on top of the stack now resides $w_5$. Lines 9 to 20 are executed to update the adjoint of its subexpressions ($w_3$ and $w_4$). After that $w_3$ and its whole expression tree on the stack is handled and then the same for $w_4$ happens (first $w_4$ and then $w_3$ would be possible too). As you can see, after doing the ``forward pass'' by abusing continuations we now iterate through each expression in the same order as we would do when doing reverse differentiation by hand. As shown before, lines 9 to 20 are also similar to by-hand differentiation. \todo{remove sentence?}
+
+\todo{Add visualization of ``stack''}
+
+In the end we define a \lstinline{differentiate} operator and call it:
+\begin{lstlisting}[mathescape=true]
 def differentiate(f: Dual => (Dual => Dual) => Dual)(x: Double): Double = {
     val xDual = Dual(x, 0)
 
-    // The result of f does not interest us directly. We only need its side effects
+    // Use only side effects
     f(xDual) { topExpression => {
-        // We have to mark the top-most expression manually because our program would have no way to recognize it
-        topExpression.adjoint = 1 // $\diff{y}{y}$
-        topExpression
+        // Manually set adjoint of top-most expression
+        topExpression.adjoint = 1 // $\overline{y} = \diff{y}{y}$
+        topExpression // $y$
     }
     }
     xDual.adjoint // $\overline{x} = \diff{y}{x}$
@@ -91,6 +101,14 @@ def f(x: Dual)(k: Dual => Dual): Dual =
 end f
 
 val derivative: Double = differentiate(f)(3)
-
 \end{lstlisting}
+The continuation passed to \lstinline{f} in line 5 is basically just an identity function to mark the top most expression and to act as the recursion anchor. We just have to additionally set the adjoint of the top expression to 1 because our program would not know which the top expression is. Another point\todowording to notice is that we don't directly use the result of \lstinline{f} and instead read the mutated adjoint of $x$ in line 11. This makes sense because \lstinline{f} returns the result of the \emph{top} expression. Its adjoint is trivially 1 (line 7) and therefore is not interesting while the adjoint of $x$ (line 11) is exactly the derivative of \lstinline{f}. \todo{Visualize stack also for this example?}
 
+\todo{remove or use}
+% https://tikzcd.yichuanshen.de/#N4Igdg9gJgpgziAXAbVABwnAlgFyxMJZABgBoAmAXVJADcBDAGwFcYkRyQBfU9TXfIRTkK1Ok1bsAHt14gM2PASIBGUirEMWbRCABUsvosFEAzKVOaJOkDJ5GBylAFYLV7dMPz+SocgAsojRakroG9t7GTsgAbEHiHrp2cgqOfq4awdbs4Sk+JijmxO6hIADUXqm+RADsblmJIJX50XXFDaXcYjBQAObwRKAAZgBOEAC2SCIgOBBIaiAAFjD0UOyQYGw0OPRYjOsEbBGjE1Pbc4hkSytruhtbIABGMGC3V3CLWEM4SMTHY5NEHUZhdXNdVgdNl4ToDgbMkHFwbdwIdoQCkGD4YhzEjIUc5DCMeckIFcXdUf9TogABzExDkSmA2kgpDA5YQ8lQxlIACcdJUVxCNgAOsK4MxHnAdgBjADWwFFOBgUhwwCGEBGAHd6CMoFwAASi0WG4VKlXAcbQGBcLggGiMejPRgABRaQhAjBg3ztIA+Xx+iAW7NuYGYjEY3MDVyxfN9n29iAAtGCHU7XVF3Z7vR0RWKJVL6HKFablaqRjBaDARnBrSbjYrSxarTaulwgA
+\begin{tikzcd}
+    &                                           &   & + \arrow[lld] \arrow[rrd, no head] &                                           &                                           &   & {} \arrow[ddd, "\substack{\text{reverse} \\ \text{mode}}", shift left=5] \\
+    & * \arrow[rd, no head] \arrow[ld, no head] &   &                                    &                                           & * \arrow[ld, no head] \arrow[rd, no head] &   &                                                                          \\
+    2 &                                           & x &                                    & * \arrow[ld, no head] \arrow[rd, no head] &                                           & x &                                                                          \\
+    &                                           &   & x                                  &                                           & x                                         &   & {} \arrow[uuu, "\substack{\text{forward} \\ \text{mode}}", shift right]
+\end{tikzcd}

@@ -22,7 +22,7 @@ As this was just a small experiment we leave this here without much explanation 
 Rewriting code that way has one problem. We loose the actual result of our formula and only get the derivative (or we would have to calculate both separately). Instead we could use a structure that consists of two values, the normal result of the operation and its derivative. Such a construct is called a "dual number" \todo{link Wikipedia or maybe a paper?} and could look like this:
 \lstscala{implementation/DualNumber.scala}{3}{3}
 To implement an operation on these we have to define the actual computation and additionally how to compute the derivative:
-\lstscalacaption{implementation/DualNumber.scala}{3}{12}{Using dual numbers to implement forward mode differentiation}{lst:forwardDualNumber}
+\lstscalacaption{implementation/DualNumber.scala}{3}{12}{Dual number implementation}{lst:forwardDualNumber}
 As we can see, this comes down to translating mathematic symbolic differentiation rules into code (lines 4 and 9). How to define constants and the variable which we differentiate our function with respect to \todogrammar also comes naturally:
 \lstscala{implementation/DualNumber.scala}{14}{15}
 Differentiation of a function $f$ at $x = 3$ could then look like this:
