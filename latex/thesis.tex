@@ -58,10 +58,14 @@
 	\BeforeBeginEnvironment{lstlisting}{\begin{mdframed}[style=listingstyle]}
 	\AfterEndEnvironment{lstlisting}{\end{mdframed}}
 
+\usepackage{tikz-cd}
+	\usetikzlibrary{babel} % to fix error with "" in arrow labels
 
 \newcommand{\lstscala}[3]{\lstinputlisting[firstline=#2, lastline=#3]{listings/#1}}
-\newcommand{\lstscalacaption}[5]{\lstinputlisting[firstline=#2, lastline=#3, label={lst:#5}, caption={#4}]{listings/#1}}
+\newcommand{\lstscalacaption}[5]{\lstinputlisting[firstline=#2, lastline=#3, label={#5}, caption={#4}]{listings/#1}}
+\newcommand{\code}[1]{\texttt{#1}}
 
+\newcommand{\pluseq}{\mathrel{+}\mathrel{\mkern-2mu}=}
 
 
 %%This is needed for pdfTeX version older than April 2018
@@ -94,6 +98,9 @@
 	% \captionsetup[lstlisting]{labelfont={bf}, labelsep=colon, justification=centering}
 
 \newcommand{\reflst}[1]{\hyperref[#1]{listing} \ref{#1}} % reference listings
+\newcommand{\reffig}[1]{\hyperref[#1]{figure} \ref{#1}} % reference figures
+\newcommand{\refsec}[1]{\hyperref[#1]{section} \ref{#1} (\nameref{#1})} % reference sections
+
 
 
 \newcommand{\todocolor}[2]{{\color{#1}{\textbf{TODO: }#2}}}
