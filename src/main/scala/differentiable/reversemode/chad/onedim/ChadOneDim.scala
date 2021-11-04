@@ -3,55 +3,32 @@ package differentiable.reversemode.chad.onedim
 import scala.language.{existentials, implicitConversions}
 import scala.math.pow
 
-type Real = Double
-type Real2 = (Double, Double)
-type RealN = Real | Real2
-
 trait SemiGroup[T]:
   extension (l: T) def +(r: T): T
 
 trait Monoid[T] extends SemiGroup[T]:
   def zero: T
 
-given Monoid[Real2] with
-  extension (l: Real2) def +(r: Real2): Real2 = (l._1 + r._1, l._2 + r._2)
-  val zero: Real2 = (0.0, 0.0)
-
-given Monoid[Real] with
-  extension (l: Real) def +(r: Real): Real = l + r
-  val zero: Real = 0.0
+given Monoid[Double] with
+  extension (l: Double) def +(r: Double): Double = l + r
+  val zero: Double = 0.0
 
 
-case class Dual[Val <: RealN, DOut <: RealN](v: Val, d: Val => DOut)
-extension[DOut <: RealN: Monoid](thisRealDual: Dual[Real, DOut])
-  def *(thatRealDual: Dual[Real, DOut]): Dual[Real , DOut] = mulTwo(thisRealDual, thatRealDual)
-  def +(thatRealDual: Dual[Real, DOut]): Dual[Real , DOut] = sumTwo(thisRealDual, thatRealDual)
+case class Dual(v: Double, d: Double => Double)
+extension[DOut <: Double: Monoid] (thisRealDual: Dual)
+  def *(thatRealDual: Dual): Dual = mulTwo(thisRealDual, thatRealDual)
+  def +(thatRealDual: Dual): Dual = sumTwo(thisRealDual, thatRealDual)
 
 
-def variable[Val <: RealN](v: Val): Dual[Val, Val] = Dual(v, identity)
+def variable[Val <: Double](v: Val): Dual = Dual(v, identity)
 
-def const[Val <: RealN: Monoid](v: Val): Dual[Val, Val] = Dual(v, _ => summon[Monoid[Val]].zero)
+def const(v: Double): Dual = Dual(v, _ => summon[Monoid[Double]].zero)
 
-def mulOne[DOut <: RealN](t: Dual[Real2, DOut]): Dual[Real, DOut] =
-  def dMul(x: Real2)(y: Real) = x match
-    case (l, r) => (y*r, y*l)
-
-  t match
-    case Dual(tV @ (tL, tR), tD) =>
-      Dual(
-        tL * tR,
-        y =>
-          tD(dMul(tV)(y))
-      )
-
-def mulTwo[DOut <: RealN: Monoid](
-                                                 l: Dual[Real, DOut],
-                                                 r: Dual[Real, DOut]
-                                               ): Dual[Real , DOut] =
-  def dMul(x: Real2)(y: Real): Real2 =
+def mulTwo(l: Dual, r: Dual): Dual =
+  def dMul(x: (Double, Double))(y: Double): (Double, Double) =
     (y*x._2, y*x._1)
 
-  def dCombinedInput(dMulResult: Real2) =
+  def dCombinedInput(dMulResult: (Double, Double)) =
     l.d(dMulResult._1) + r.d(dMulResult._2)
 
   Dual(
@@ -60,11 +37,11 @@ def mulTwo[DOut <: RealN: Monoid](
       dCombinedInput(dMul(l.v, r.v)(y))
   )
 
-def sumTwo[DOut <: RealN: Monoid](l: Dual[Real, DOut], r: Dual[Real, DOut]): Dual[Real, DOut] =
-  def dSum(y: Real): Real2 =
+def sumTwo(l: Dual, r: Dual): Dual =
+  def dSum(y: Double): (Double, Double) =
     (y, y)
 
-  def dCombinedInput(dSumResult: Real2) =
+  def dCombinedInput(dSumResult: (Double, Double)) =
     l.d(dSumResult._1) + r.d(dSumResult._2)
 
   Dual(
@@ -74,9 +51,8 @@ def sumTwo[DOut <: RealN: Monoid](l: Dual[Real, DOut], r: Dual[Real, DOut]): Dua
   )
 
 
-given Conversion[Real2, Dual[Real2, Real2]] = const(_)
-given Conversion[Real, Dual[Real,  Real]] = const(_)
-given Conversion[Int, Dual[Real, Real]] = const(_)
+given Conversion[Double, Dual] = const(_)
+given Conversion[Int, Dual] = const(_)
 
 @main def main() =
 //  val x = 5.0
