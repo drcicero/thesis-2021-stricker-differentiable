@@ -57,7 +57,7 @@ def grad(f: Monad => Monad)(x: Double): Double =
   val xM = wrap(Num(x))
   val topMonad = f(xM)
   val initialDeriv = Map.empty.withDefaultValue(0.0).updated(topMonad.y, 1.0)
-  println(topMonad)
+//  println(topMonad)
   topMonad.derivationUpdater(initialDeriv)(xM.y)
 
 type Deriv = Map[Num, Double]

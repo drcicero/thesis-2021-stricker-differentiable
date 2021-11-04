@@ -57,7 +57,7 @@ private def impl(m: Expr[Monad])(using Quotes): Expr[Monad] = m match
     x
 
   case _ => 
-    println(m.show)
+//    println(m.show)
     m
 
 //private def removeEx(n: Expr[Num])(using Quotes): Expr[Monad] = n match

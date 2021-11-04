@@ -55,7 +55,7 @@ case class Num(x: Double, derivUpdater: ListSet[Deriv => Deriv], id: UUID):
 end Num
 
 object Num:
-  def apply(x: Double, derivUpdater: ListSet[Deriv => Deriv]): Num = 
+  def apply(x: Double, derivUpdater: ListSet[Deriv => Deriv]): Num =
     Num(x, derivUpdater, randomUUID())
   def apply(x: Double): Num = Num(x, ListSet(identity))
 end Num
@@ -70,7 +70,7 @@ def grad(f: Num => Num)(x: Double): Double =
   val xNum = Num(x)
   val top = f(xNum)
   val initialDeriv = Map.empty.withDefaultValue(0.0).updated(top.id, 1.0)
-  println(top)
+//  println(top)
   top.derivUpdater.reduceLeft(_ andThen _)(initialDeriv)(xNum.id)
 
 
