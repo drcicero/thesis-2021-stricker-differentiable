@@ -1,4 +1,4 @@
-\section{Tape}
+\subsection{Tape}
 
 \todocite{Lantern paper}
 The following implementation is very similar to CPS but instead of building a stack of calls implicitly by calling continuations we build that ``call stack'' manually. Remember that the only goal we achieved by using continuations was a two pass design which we used to do some operations (compute regular result) in normal order and some operations (compute adjoint) in reverse order through the expression tree. Another way to achieve this is to do the forward pass as usual but on the way additionally save all operations which have to be done in the reverse pass for later. When we have collected every operation we just execute them in ``reverse'' order:

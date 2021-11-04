@@ -1,9 +1,9 @@
-\section{Forward Mode Differentiation}
+\chapter{Forward Mode Differentiation}
 
 Forward mode differentiation by hand is straight forward and also translates well into code by sticking to our existing knowledge about symbolic differentiation \todo{define symbolic differentiation?}. Essentially we want to go through every operation recursively and replace it with its derivative.
 
 
-\subsection{Code replacement with macros}
+\section{Code replacement with macros}
 If you take the last sentence literally you could now go the long and hard way (which we did), learn metaprogramming and implement it exactly by replacing expressions with their derivative. This approach looks rather ugly at first sight but after ignoring the boilerplate (with the help of the comments on the right hand side) one can see that it just boils down to recursive pattern matching of code which works pretty well in Scala 3:
 \begin{lstlisting}
 def d(t: Expr[Term])(using Quotes): Expr[Term] = t match
@@ -17,7 +17,7 @@ def d(t: Expr[Term])(using Quotes): Expr[Term] = t match
 As this was just a small experiment we leave this here without much explanation for now. \todo{maybe comments enough explanation? Or just explain more} In fact we wouldn't even need macros and could just write our term with algebraic data types and recursively match them at runtime to implement this approach. This would reduce the boilerplate in comparison to the macro-implementation above.
 
 
-\subsection{Operator overloading with dual numbers}
+\section{Operator overloading with dual numbers}
 \todo{Following definitions, implementations by lantern paper (link to it or github)}
 Rewriting code that way has one problem. We loose the actual result of our formula and only get the derivative (or we would have to calculate both separately). Instead we could use a structure that consists of two values, the normal result of the operation and its derivative. Such a construct is called a "dual number" \todo{link Wikipedia or maybe a paper?} and could look like this:
 \lstscala{implementation/DualNumber.scala}{3}{3}
@@ -29,7 +29,7 @@ Differentiation of a function $f$ at $x = 3$ could then look like this:
 \lstscala{implementation/DualNumber.scala}{18}{24}
 
 
-\subsection{Static typing taken too far (Or: Let the compiler code for you)}
+\section{Static typing taken too far (Or: Let the compiler code for you)}
 To explain the following approach we first have to look at match types which are essentially functions but at type level. We put one type in, look at it and decide which type to ``return''. It gets clear with the following example taken from the Scala 3 docs \cite{matchTypesScala3}. You could get the element type of any list-like type:
 \begin{lstlisting}
 type Elem[X] = X match

@@ -1,4 +1,4 @@
-\section{Reverse mode differentiation}\label{sec:reverseMode}
+\chapter{Reverse mode differentiation}\label{sec:reverseMode}
 \todo{Whole chapter of Wikipedia (better citation)}
 
 In contrast to forward mode differentiation which benefits highly from our intuition, reverse mode is not straight forward to implement and we even have to work constantly against our intuition. To make this difference clear let's go through an example taken from Wikipedia \cite{forwardAccumulationWiki}:
@@ -82,6 +82,9 @@ further we realize that we have to compute the derivative of the parent expressi
 The remaining and main task is to find $\overw{p}$, \todopunctuation the adjoint of the parent expression (i.e. the derivative of $y$ with respect to $w_p$). This is a recursive problem but unfortunately in reverse order because information flows from outer expression to inner \todo{or inner to outer?, just remove?} as already illustrated in \reffig{fig:informationFlow}. Solving this ``reversed flow of information'' to calculate $\overw{p}$ elegantly, efficiently or easily to reason about is the main goal of the following implementations. \todo{define better goal according to goal of my theses?}
 
 
-\input{content/implementation/reverseMode/cps.tex}
+\section{Using mutation}
+\input{content/implementation/reverseMode/mutation/cps.tex}
+\input{content/implementation/reverseMode/mutation/tape.tex}
 
-\input{content/implementation/reverseMode/tape.tex}
+\section{Without mutation}
+\input{content/implementation/reverseMode/functional/functionalCps.tex}
