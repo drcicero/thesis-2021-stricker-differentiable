@@ -1,4 +1,4 @@
-package differentiable.reversemode.chad
+package differentiable.reversemode.chad.onedim
 
 import scala.language.{existentials, implicitConversions}
 import scala.math.pow

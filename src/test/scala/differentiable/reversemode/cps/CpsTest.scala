@@ -32,7 +32,7 @@ class CpsTest extends AnyFunSuite {
     cases.foreach { (actual, expectedDerivative) =>
       (-5 to 5).foreach { x =>
         assert(
-          grad(actual)(x) === expectedDerivative(x),
+          differentiate(actual)(x) === expectedDerivative(x),
           s"\nx = $x\nActual: $actual\nExpected: $expectedDerivative")
       }
     }

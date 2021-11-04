@@ -6,6 +6,7 @@ import scala.annotation.showAsInfix
 import scala.compiletime.ops.int._
 import scala.compiletime.{constValue, erasedValue}
 import scala.quoted._
+import scala.language.implicitConversions
 
 sealed trait Poly:
   def apply(x: Double): Double
@@ -34,6 +35,12 @@ case class V[C <: Double | Int](c: C) extends Poly:
     case i: Int => i
   override def toString: String = c.toString
 
+//type Poly = ((Double, Double) => Double) | Double | Int
+//type *[L <: Poly, R <: Poly] = (Double, Double) => Double
+//type +[L <: Poly, R <: Poly] = (Double, Double) => Double
+//type X = Double
+//type V[C <: Double] = C
+
 type D[P <: Poly] <: Poly = P match
   case l * r => l * D[r] + D[l] * r
   case l + r => D[l] + D[r]
@@ -54,3 +61,7 @@ inline def initPolynomial[P <: Poly]: P =
   res.asInstanceOf[P]
 
 inline def d[P <: Poly]: D[P] = initPolynomial
+
+def f =
+  type F = V[-0.1] + (X ** -5)
+  type DF = D[F]

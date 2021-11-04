@@ -28,7 +28,7 @@ class TapeTest extends AnyFunSuite {
     cases.foreach { (actual, expectedDerivative) =>
       (-5 to 5).foreach { x =>
         assert(
-          grad(x)(actual) === expectedDerivative(x),
+          grad(actual)(x) === expectedDerivative(x),
           s"\nx = $x\nActual: $actual\nExpected: $expectedDerivative")
 
 

@@ -7,32 +7,36 @@ import scala.compiletime.{constValue, erasedValue}
 import scala.language.implicitConversions
 import scala.quoted._
 
-case class Dual(x: Double, var d: Double):
-  def +(r: Dual)(k: Dual => Dual): Dual =
-    val y = Dual(x + r.x, 0)
-    val res = k(y)
-    d += y.d
-    r.d += y.d
-    res
+case class Dual(x: Double, var adjoint: Double):
+  def *(that: Dual)(k: Dual => Dual): Dual =
+    val localResult = Dual(this.x * that.x, 0)
+    val globalResult = k(localResult)
+    
+    this.adjoint += that.x * localResult.adjoint
+    that.adjoint += this.x * localResult.adjoint  
 
-  def *(r: Dual)(k: Dual => Dual): Dual =
-    val y = Dual(x * r.x, 0)
-    val res = k(y)
-    d += r.x * y.d
-    r.d += x * y.d
-    res
-
+    globalResult
+  
+  def +(that: Dual)(k: Dual => Dual): Dual =
+    val localResult = Dual(this.x + that.x, 0)
+    val globalResult = k(localResult)
+    
+    this.adjoint += 1 * localResult.adjoint
+    that.adjoint += 1 * localResult.adjoint 
+    
+    globalResult
+    
 given Conversion[Double, Dual] = Dual(_, 0)
 given Conversion[Int, Dual] = Dual(_, 0)
 
-def grad(f: Dual => (Dual => Dual) => Dual)(x: Double): Double = {
+def differentiate(f: Dual => (Dual => Dual) => Dual)(x: Double): Double = {
   val xDual = Dual(x, 0)
   f(xDual) { topExpression => {
-    topExpression.d = 1
+    topExpression.adjoint = 1
     topExpression
   }
   }
-  xDual.d
+  xDual.adjoint
 }
 
 
@@ -41,12 +45,10 @@ def grad(f: Dual => (Dual => Dual) => Dual)(x: Double): Double = {
     (2 * x) { y1 =>
       (x * x) { y2 =>
         (y2 * x) { y3 =>
-          (y1 + y3) {
-            k(_)
-          }
+          (y1 + y3) { k }
         }
       }
     }
 
-  println(f(3){ identity(_) }.x)
-  println(grad(f)(3))
+  println(differentiate(f)(3))
+
