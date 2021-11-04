@@ -49,7 +49,7 @@ def w3 = w1 * w2
 def w4 = sin(w1)
 def y =  w3 + w4 // w5
 \end{lstlisting}
-At definition time of \lstinline{w3} we don't have enough information to calculate an andjoint because only after adding all context with the definition of \lstinline{y} we know all branches where \lstinline{w1} occurs. In fact \lstinline{y} could also be just another subexpression of a bigger calculation. Usually when evaluating expressions you can start evaluating the innermost subexpression and use its result to evaluate its containing expression as we did for forward mode differentiation. Unfortunately this isn't possible for reverse mode and directly using dual numbers as is doesn't suffice. We have to start with the top expressione $w_5$ and work our way down to (all occurrences of) $w_1$ (and $w_2$). This is very unnatural to implement because the information flows in reverse order (\reffig{fig:informationFlow}).
+At definition time of \lstinline{w3} we don't have enough information to calculate an andjoint because only after adding all context with the definition of \lstinline{y} we know all branches where \lstinline{w1} occurs. In fact \lstinline{y} could also be just another subexpression of a bigger calculation. Usually when evaluating expressions you can start evaluating the innermost subexpression and use its result to evaluate its containing expression as we did for forward mode differentiation. Unfortunately this isn't possible for reverse mode and directly using dual numbers as is doesn't suffice. We have to start with the top expressione $w_5$ and work our way down to (all occurrences of) $w_1$ (and $w_2$). This is very unnatural to implement because the information flows in reverse order (\reffig{fig:informationFlow}). \todo{Two arrows for reverse mode: values up, adjoints down}
 \begin{center}
     % https://tikzcd.yichuanshen.de/#N4Igdg9gJgpgziAXAbVABwnAlgFyxMJZABgBoAmAXVJADcBDAGwFcYkQAdDuZgIzhz0AxgGtgAdwD6ARgAEXLrIAeMgL4hVpdJlz5CKchWp0mrdlx79BoiZPLyFyu+s3bseAkWmlpxhizZETm4+AWExKQBmB0UAKhctEAx3PSJInz9TQODLMJspABYYjgdsMAS3XU8DUmJMgPMQq3DbAFZi2QBqCqSdD31kdKoafzMgi1DrCJkOlWke5KqBgqMRrPYNRMX+ohW6tYagjWMYKABzeCJQADMAJwgAWyRDEBwIJG8QAAsYeih2SBgNg0QRYRgAghsVwgO6PZ4g96IMjfX7-IKA4EgXgwMBo5FwL5Ya44JDEaGwp6IFavREvH5-CFAzY3e6U6lvJDpFEM9GQ5kw1mchFIVo0elo8B88mCxAANmFiAA7DQCUSSYgXqNshNmjYuDgYEocMBrhBbuJ6LcoKoOvrDcaHtAYKp1CD6GDGVDEhSkMqaUh5SBVcSkABaUUmQ45SYtO1G4C3GC0GC3ODO20cA3xx2wF3HVRAA
     \begin{tikzcd}
@@ -83,3 +83,5 @@ The remaining and main task is to find $\overw{p}$, \todopunctuation the adjoint
 
 
 \input{content/implementation/reverseMode/cps.tex}
+
+\input{content/implementation/reverseMode/tape.tex}
