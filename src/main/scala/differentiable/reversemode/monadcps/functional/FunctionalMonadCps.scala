@@ -1,6 +1,6 @@
 package differentiable.reversemode.monadcps.functional
 
-import differentiable.reversemode.monadcps.functional.Monad.wrap
+import differentiable.reversemode.monadcps.functional.DualMonad.wrap
 
 import java.lang.Math.{pow, toIntExact}
 import scala.annotation.showAsInfix
@@ -9,40 +9,50 @@ import scala.compiletime.{constValue, erasedValue}
 import scala.language.implicitConversions
 import scala.quoted._
 
-case class Monad(val y: Num, derivationUpdater: Deriv => Deriv):
-  def flatMap(k: Num => Monad): Monad =
-    val that = k(y)
-    Monad(that.y, that.derivationUpdater andThen this.derivationUpdater )
+case class DualMonad(parent: Num, adjointsUpdater: Adjoints => Adjoints):
+  def flatMap(k: Num => DualMonad): DualMonad =
+    val that = k(parent)
+    DualMonad(that.parent, that.adjointsUpdater andThen this.adjointsUpdater )
 
-  def map(k: Num => Num): Monad =
+  def map(k: Num => Num): DualMonad =
     flatMap(k andThen wrap)
 
-object Monad:
-  def wrap(n: Num): Monad = Monad(n, identity)
+object DualMonad:
+  def wrap(n: Num): DualMonad = DualMonad(n, identity)
 
 class Num(val x: Double):
-  def +(that: Num): Monad =
+  def *(that: Num): DualMonad =
+    val parent = Num(this.x * that.x)
+
+    def addPartialAdjoint(thisOrThat: Num, derivativeWrtThisOrThat: Double, adjoints: Adjoints) =
+      val partialAdjoint = adjoints(parent) * derivativeWrtThisOrThat
+      val addedPartialAdjoint = adjoints(thisOrThat) + partialAdjoint
+      adjoints + (thisOrThat -> addedPartialAdjoint)
+
+    DualMonad(
+      parent,
+      adjoints =>
+        val adjointsWithThis = addPartialAdjoint(this, that.x, adjoints)
+        val adjointsWithThat = addPartialAdjoint(that, this.x, adjointsWithThis)
+        adjointsWithThat
+    )
+  end *
+
+  def +(that: Num): DualMonad =
     val y = Num(this.x + that.x)
-    Monad(
+
+    def addPartialAdjoint(deriv: Adjoints, key: Num, y: Num)(op: (yd: Double) => Double): Adjoints =
+      deriv + (key -> (
+        deriv(key) + op(deriv(y))
+        ))
+
+    DualMonad(
       y,
       deriv =>
-        val derivWithThis = updateDeriv(deriv, this, y){ identity }
-        updateDeriv(derivWithThis, that, y){ identity }
+        val derivWithThis = addPartialAdjoint(deriv, this, y){ identity }
+        addPartialAdjoint(derivWithThis, that, y){ identity }
     )
-
-  def *(that: Num): Monad =
-    val y = Num(this.x * that.x)
-    Monad(
-      y,
-      deriv =>
-        val derivWithThis = updateDeriv(deriv, this, y){ that.x * _ }
-        updateDeriv(derivWithThis, that, y){ this.x * _ }
-    )
-
-  private def updateDeriv(deriv: Deriv, key: Num, y: Num)(op: (yd: Double) => Double): Deriv =
-    deriv + (key -> (
-      deriv(key) + op(deriv(y))
-      ))
+  end +
 
   override def toString: String = x.toString
 end Num
@@ -50,17 +60,17 @@ end Num
 given Conversion[Double, Num] = Num(_)
 given Conversion[Int, Num] = Num(_)
 
-def grad(f: Monad => Monad)(x: Double): Double =
+def grad(f: DualMonad => DualMonad)(x: Double): Double =
   val xM = wrap(Num(x))
   val topMonad = f(xM)
-  val initialDeriv = Map.empty.withDefaultValue(0.0).updated(topMonad.y, 1.0)
+  val initialDeriv = Map.empty.withDefaultValue(0.0).updated(topMonad.parent, 1.0)
 //  println(topMonad)
-  topMonad.derivationUpdater(initialDeriv)(xM.y)
+  topMonad.adjointsUpdater(initialDeriv)(xM.parent)
 
-type Deriv = Map[Num, Double]
+type Adjoints = Map[Num, Double]
 
 @main def main() =
-  def f(xM: Monad): Monad =
+  def f(xM: DualMonad): DualMonad =
     for
       x <- xM
       y1 <- x * 2
@@ -69,7 +79,7 @@ type Deriv = Map[Num, Double]
       y4 <- y1 + y3
     yield y4
 
-  def g(xM: Monad): Monad =
+  def g(xM: DualMonad): DualMonad =
     for
       x <- xM
       y <- x * x
