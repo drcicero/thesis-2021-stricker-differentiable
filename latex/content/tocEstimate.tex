@@ -1,0 +1,48 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Planned table of contents
+% \IMRADlabel{introduction}
+% \input{content/introduction}
+\chapter{Introduction (2.5)}
+	\section{Motivation, Why? -> ML needs this for Newton etc (0.5)}
+% \IMRADlabel{methods}
+	\section{Overview}
+		\subsection{Short summary of all implementation styles (i.e. CPS, Monad, tape, macro) (0.5)}
+	\section{Details}
+		\subsection{Go through a real ML task (the implemented test) with "grad" as blackbox -> defines "goal" (1)}
+		\subsection{Define "goal" (0.5)}
+% \input{content/implementation}
+
+\chapter{Forward Mode Differentiation [4] => +3}
+	\section{Code replacement with macros [0.5]}
+	\section{Operator overloading with dual numbers [1]}
+	\section{Static typing taken too far (Or: Let the compiler code for you) [1.5] => +0.5}
+
+\chapter{Reverse mode differentiation [10.5] + (11.5)}
+	\section{[4] => +4}
+	\section{Using mutation [6.5] + (3) => +3}
+		\subsection{Continuation Passing Style (CPS) [4]}
+		\subsection{Tape [2.5] => +2}
+		\subsection{Monad (3)}
+			\subsubsection{For-comprehensions (flatMap, map)}
+			\subsubsection{First try: .map() "closes" monad}
+			\subsubsection{Second try: Chaining of functions with global tape (translate from tape)}
+	\section{Without mutation (8.5) => +5.5}
+		\subsection{Why no mutation (state, multiple calculations, reasoning) (0.5)}
+		\subsection{Continuation Passing Style (CPS) (1)}
+		\subsection{Monad (2)}
+		\subsection{Forless Monad (1)}
+		\subsection{Tape (2)}
+		\subsection{Chad (2)}
+			\subsubsection{Multidim => Every class that is a Monoid is supported}
+
+\chapter{Evaluation (1.5)}
+	\section{List all comparison metrics (Runtime, LOC, compile time) (1)}
+	\section{Interpretation (0.5)}
+
+\chapter{Related work (0.5)}
+	\section{lantern paper}
+	\section{Microsoft paper (=> more efficiency)}
+
+% \IMRADlabel{discussion}
+\chapter{Conclusion (0.5)}
+
+% Pages: 2.5 + 4 + 21.5 + 1.5 + 0.5 + 0.5 = 30

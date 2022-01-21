@@ -1,8 +1,6 @@
-\subsection{Continuation Passing Style (CPS)}
+\subsection{Continuation Passing Style (CPS)} \label{sec:cps}
 
-\todocite{Lantern paper}
-
-Continuation is just a fancy term \todowording for the frequently used callbacks (e.g. for frontend web development) \todocite{?}. Essentially you pass the ``rest of the calculation'' to the function instead of using its return value and manually applying the ``rest'' on that result. To make things clear, \todopunctuation consider chaining two arbitrary functions (with unspecified types \lstinline{A, B, C, D}) as usual:
+Continuation is just an elaborate term for the frequently used callbacks (e.g. for frontend web development). Essentially you pass the ``rest of the calculation'' to the function instead of using its return value and manually applying the ``rest'' on that result. To make things clear consider chaining two arbitrary functions (with unspecified types \lstinline{A, B, C, D}) as usual:
 \begin{lstlisting}[caption={Ordinary chaining}, label={lst:ordinaryChaining}]
 def first(x: A): B = ???
 def second(x: B): D = ???
@@ -29,9 +27,8 @@ val a: A = ???
 val chainedResult: D = chained(a) { identity }
 \end{lstlisting}
 Notice that the \emph{input} type of \lstinline{rest} in \lstinline{first} of \reflst{lst:cpsChaining} is \lstinline{B}. This matches the \emph{result} type of \lstinline{first} in \reflst{lst:ordinaryChaining} (and analogously for \lstinline{D} and \lstinline{second}). To show the general equality of both approaches we also had to introduce type parameter \lstinline{R} to all functions. This is needed to support arbitrary \lstinline{rest} functions even if they do not return exactly \lstinline{D}. In line 10 of \reflst{lst:cpsChaining} we pass \lstinline{identity} to \lstinline{chained} to mark the ``end'' of the calculation. We could have passed another arbitrary operation instead, similarly to how we could have applied arbitrary operations on \lstinline{chainedResult} in \reflst{lst:ordinaryChaining}. When following CPS strictly, every function takes a continuation and ordinary variables are never used. Lambdas with named parameters fullfil that role instead, as seen with \lstinline{firstResult} in line 5.
-\todo{Add theoretical explanation of code above (\url{https://pbs.twimg.com/media/FAjvTXRXEAwKuT-?format=png&name=small})}
 
-Using this, at first glance rather obscure, feature we can implement reverse mode using dual numbers:
+Using this at first glance rather obscure feature we can implement reverse mode using dual numbers:
 \begin{lstlisting}[mathescape=true, caption={Reverse mode CPS}, label={lst:cpsDual}]
 case class Dual(x: Double, var adjoint: Double):
     def *(that: Dual)(k: Dual => Dual): Dual =
@@ -50,6 +47,7 @@ case class Dual(x: Double, var adjoint: Double):
                 localResult.adjoint * derivativeWrtThisOrThat
             // $ \overw{i} \pluseq \overw{i}^z $
             thisOrThat.adjoint += partialAdjoint
+        end addPartialAdjoint
 
         addPartialAdjoint(this, that.x) // $ i = \text{this} $
         addPartialAdjoint(that, this.x) // $ i = \text{that} $
@@ -62,21 +60,35 @@ case class Dual(x: Double, var adjoint: Double):
     def sin(k: Dual => Dual): Dual = ???
 end Dual
 \end{lstlisting}
-Compared to forward dual numbers (\reflst{lst:forwardDualNumber}) we changed the name of the second member of \lstinline{Dual} to \lstinline{adjoint} to reflect the shift in focus from $\dot w_i$ to $\overw{i}$. The comments add translations from code expressions into their mathematic notation from \refsec{sec:reverseMode}. $w_p$ in line 13 means \todowording the parent expression, e.g. for multiplication we would write it like this:
+Compared to forward dual numbers (\reflst{lst:forwardDualNumber}) we changed the name of the second member of \lstinline{Dual} to \lstinline{adjoint} to reflect the shift in focus from $\dot w_i$ to $\overw{i}$. The comments add translations from code expressions into their mathematic notation from \refsec{sec:reverseMode}. $w_p$ in line 13 signifies the parent expression, e.g. for multiplication we would write it like this:
 \begin{align*}
     w_{\text{this}} &= \text{\lstinline{this}} \\
     w_{\text{that}} &= \text{\lstinline{that}} \\
     w_p &= w_{\text{this}} \cdot w_{\text{that}}
 \end{align*}
-The helper function \lstinline{addPartialAdjoint} (line 9) essentially just executes the mathematical expressions in lines 13 and 16 but generalizes over for which subexpression ($\overw{\text{this}}^z$ or $\overw{\text{that}}^z$) to compute the partial adjoint. The \lstinline{partialAdjoint} (line 14) is the adjoint of this specific occurrence of $ w_i^z $. Remember that we have to sum the partial adjoints of all occurrence to get the full adjoint. Exactly that happens in line 17 by mutating \lstinline{thisOrThat.adjoint}. Every expression is responsible to add the partial adjoints of their subexpressions. By translating everything into mathematical notation, one can clearly see big similarities to the mathematical foundations \todowording of reverse mode differentiation seen in \refsec{sec:reverseMode}.
+The helper function \lstinline{addPartialAdjoint} (line 9) essentially just executes the mathematical expressions in lines 13 and 16 but generalizes over for which subexpression ($\overw{\text{this}}^z$ or $\overw{\text{that}}^z$) to compute the partial adjoint. The \lstinline{partialAdjoint} (line 14) is the adjoint of this specific occurrence of $ w_i^z $. Remember that we have to sum the partial adjoints of all occurrence to get the full adjoint. Exactly that happens in line 17 by mutating \lstinline{thisOrThat.adjoint}. Every expression is responsible to add the partial adjoints of their subexpressions. By translating every code piece into its corresponding mathematical notation, one can clearly see the close relationship between our implementation and the mathematical foundations of reverse mode differentiation seen in \refsec{sec:reverseMode}.
 
-The main difference is line 6 where we call the continuation \lstinline{k}. It represents the rest of the computation as stated previously. In this context specifically, it represents all further operations that might use the passed \lstinline{localResult}. Note that those further operations are ancestors and not children or in other words they are outer and not inner operations.\todowording The first job of the continuation is to do an ``forward pass'' through the rest of the operations by calculating the regular result (line 4) of the next operation and calling the next continuation. This recursive ``forward pass'' eventually finishes by calling a \lstinline{k} which does not call another continuation. At this point we found the recursion anchor and have built a stack of calls as usual with recursive algorithms. This built-up stack now naturally tears down \todowording in \emph{reverse order}. This was our primary goal. We had to calculate the regular results in ``normal'' order (inner to outer expression) but the adjoint is naturally calculated in reverse order (\reffig{fig:informationFlow}). From here on therefore the ``reverse pass'' starts. To go back to our running example, on top of the stack now resides $w_5$. Lines 9 to 20 are executed to update the adjoint of its subexpressions ($w_3$ and $w_4$). After that $w_3$ and its whole expression tree on the stack is handled and then the same for $w_4$ happens (first $w_4$ and then $w_3$ would be possible too). As you can see, after doing the ``forward pass'' by abusing continuations we now iterate through each expression in the same order as we would do when doing reverse differentiation by hand. As shown before, lines 9 to 20 are also similar to by-hand differentiation. \todo{remove sentence?}
+The main difference is line 6 where we call the continuation \lstinline{k}. It represents the rest of the computation as stated previously. In this context specifically, it represents all further operations that might use the passed \lstinline{localResult}. Note that those further operations are ancestors and not children or in other words they are outer and not inner operations. The first job of the continuation is to do an \emph{forward pass} through the rest of the operations. This is done by calculating the regular result (line 4) of the next operation and afterwards calling the next continuation. This recursive forward pass eventually finishes by calling a \lstinline{k} which does not call another continuation. At this point we found the recursion anchor and have built a stack of calls as usual with recursive algorithms. This built-up stack now naturally tears down in \emph{reverse order}. This is exactly our primary goal. We had to calculate the regular results in ``normal'' order (i.e. inner to outer expression) but the adjoint is naturally calculated in \emph{reverse order} (as seen in \reffig{fig:informationFlow}). The built-up stack is visualized in \reffig{fig:stack} for our running example. It tears down from top to bottom. 
+\begin{center}
+    \tikzset{
+		every node/.style={draw, text height=1.5ex},
+		split/.style={rectangle split, rectangle split parts=#1,draw,
+			rectangle split horizontal=false,rectangle split part align=base},
+	}
 
-\todo{Add visualization of ``stack''}
+    \begin{tikzpicture}[->, -{Latex}]
+        \node[split=6] (a2) at (4,1) {\nodepart{one} $w_5\ (+)$ \nodepart{two} $w_3\ (*)$ \nodepart{three} $w_1$ \nodepart{four} $w_2$ \nodepart{five} $w_4\ (\sin)$ \nodepart{six} $w_1$};    
+    \end{tikzpicture}
+
+    \captionsetup{type=figure}
+    \caption{Expression stack after the forward pass}
+    \label{fig:stack}
+\end{center}
+From here on therefore the \emph{reverse pass} starts. On top of the stack now resides $w_5$. Lines 9 to 20 are executed to update the adjoint of its subexpressions ($w_3$ and $w_4$). After that $w_3$ and its whole expression tree on the stack is handled and then the same happens for $w_4$. As you can see, after doing the forward pass by abusing continuations we now iterate through each expression in the same order as we would do when doing reverse differentiation by hand.
 
 In the end we define a \lstinline{differentiate} operator and call it:
 \begin{lstlisting}[mathescape=true]
-def differentiate(f: Dual => (Dual => Dual) => Dual)(x: Double): Double = {
+def differentiate(f: Dual => (Dual => Dual) => Dual)(x: Double): Double =
     val xDual = Dual(x, 0)
 
     // Use only side effects
@@ -87,7 +99,7 @@ def differentiate(f: Dual => (Dual => Dual) => Dual)(x: Double): Double = {
     }
     }
     xDual.adjoint // $\overline{x} = \diff{y}{x}$
-}
+end differentiate
 
 def f(x: Dual)(k: Dual => Dual): Dual =
     // 2 * x + x * x * x
@@ -102,15 +114,6 @@ end f
 
 val derivative: Double = differentiate(f)(3)
 \end{lstlisting}
-The continuation passed to \lstinline{f} in line 5 is basically just an identity function to mark the top most expression and to act as the recursion anchor. We just have to additionally set the adjoint of the top expression to 1 because our program would not know which the top expression is. Another point\todowording to notice is that we don't directly use the result of \lstinline{f} and instead read the mutated adjoint of $x$ in line 11. This makes sense because \lstinline{f} returns the result of the \emph{top} expression. Its adjoint is trivially 1 (line 7) and therefore is not interesting while the adjoint of $x$ (line 11) is exactly the derivative of \lstinline{f}. \todo{Visualize stack also for this example?}
+The continuation passed to \lstinline{f} in line 5 is basically just an identity function to mark the top most expression and to act as the recursion anchor. We just have to additionally set the adjoint of the top expression to 1 because our program would not know which the top expression is. Another point to notice is that we don't directly use the result of \lstinline{f} and instead read the mutated adjoint of $x$ in line 11. This makes sense because \lstinline{f} returns the result of the \emph{top} expression. Its adjoint is trivially 1 (line 7) and therefore is not interesting while the adjoint of $x$ (line 11) is exactly the derivative of \lstinline{f}.
 
-The biggest disadvantage of this CPS implementation is how one has to write the function \lstinline{f}. Reading it is not impossible as one ``just'' has to read every line from right to left, that is on the right hand side is the variable name (e.g. \lstinline{y1}) and on the left hand side its ``value'' (e.g. \lstinline{2 * x}). We also ``have to'' give every subexpression a name which we would normally not need to and also often don't want to. Another problem is the deep nesting which occurs for more elaborate functions. A CPS function is therefore cumbersome to write and reading them needs some time getting used to. Those problems could be solved by using shift and reset operations \todocite{something, maybe Lantern} but because there is no currently maintained implementation for Scala, we would like to refer to \todocite{Lantern} and their implementation. Principally it makes continuations implicit and hides them completely from client code.
-
-\todo{remove or use}
-% https://tikzcd.yichuanshen.de/#N4Igdg9gJgpgziAXAbVABwnAlgFyxMJZABgBoAmAXVJADcBDAGwFcYkRyQBfU9TXfIRTkK1Ok1bsAHt14gM2PASIBGUirEMWbRCABUsvosFEAzKVOaJOkDJ5GBylAFYLV7dMPz+SocgAsojRakroG9t7GTsgAbEHiHrp2cgqOfq4awdbs4Sk+JijmxO6hIADUXqm+RADsblmJIJX50XXFDaXcYjBQAObwRKAAZgBOEAC2SCIgOBBIaiAAFjD0UOyQYGw0OPRYjOsEbBGjE1Pbc4hkSytruhtbIABGMGC3V3CLWEM4SMTHY5NEHUZhdXNdVgdNl4ToDgbMkHFwbdwIdoQCkGD4YhzEjIUc5DCMeckIFcXdUf9TogABzExDkSmA2kgpDA5YQ8lQxlIACcdJUVxCNgAOsK4MxHnAdgBjADWwFFOBgUhwwCGEBGAHd6CMoFwAASi0WG4VKlXAcbQGBcLggGiMejPRgABRaQhAjBg3ztIA+Xx+iAW7NuYGYjEY3MDVyxfN9n29iAAtGCHU7XVF3Z7vR0RWKJVL6HKFablaqRjBaDARnBrSbjYrSxarTaulwgA
-\begin{tikzcd}
-    &                                           &   & + \arrow[lld] \arrow[rrd, no head] &                                           &                                           &   & {} \arrow[ddd, "\substack{\text{reverse} \\ \text{mode}}", shift left=5] \\
-    & * \arrow[rd, no head] \arrow[ld, no head] &   &                                    &                                           & * \arrow[ld, no head] \arrow[rd, no head] &   &                                                                          \\
-    2 &                                           & x &                                    & * \arrow[ld, no head] \arrow[rd, no head] &                                           & x &                                                                          \\
-    &                                           &   & x                                  &                                           & x                                         &   & {} \arrow[uuu, "\substack{\text{forward} \\ \text{mode}}", shift right]
-\end{tikzcd}
+The biggest disadvantage of this CPS implementation is how one has to write the function \lstinline{f}. Reading it is not impossible as one ``just'' has to read every line from right to left, that is on the right hand side is the variable name (e.g. \lstinline{y1}) and on the left hand side its ``value'' (e.g. \lstinline{2 * x}). We also have to give every subexpression a name which we would normally not need to and also often don't want to. Another problem is the deep nesting which occurs for more elaborate functions. A CPS function is therefore cumbersome to write and reading them needs some time getting used to. Those problems could be solved by using shift and reset operators which principally would make continuations implicit and would hide them completely from client code. Unfortunately there is currently no maintained implementation of them for Scala. Hence we would like to refer to Fei Wang et al. \cite{lantern} and their implementation of reverse mode differentiation using shift and reset operators without further going into it here. 

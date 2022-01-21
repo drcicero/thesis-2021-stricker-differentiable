@@ -1,7 +1,6 @@
 \chapter{Reverse mode differentiation}\label{sec:reverseMode}
-\todo{Whole chapter of Wikipedia (better citation)}
 
-In contrast to forward mode differentiation which benefits highly from our intuition, reverse mode is not straight forward to implement and we even have to work constantly against our intuition. To make this difference clear let's go through an example taken from Wikipedia \cite{forwardAccumulationWiki}:
+In contrast to forward mode differentiation which benefits highly from our intuition, reverse mode is not straight forward to implement and we even have to work constantly against our intuition. To make this difference clear let's go through the forward mode example from Wikipedia \cite{forwardAccumulationWiki}, using a similar notation and terminology:
 \newcommand{\yExampleDiff}{
     \begin{alignat*}{2}
         y & = x_1x_2 &  & + \sin{x_1} \\
@@ -11,9 +10,18 @@ In contrast to forward mode differentiation which benefits highly from our intui
     \end{alignat*}
 }
 \yExampleDiff
+For our purpose each expression is either an operation acting on subexpressions or a value (constant or variable). This can be conveniently visualized as an expression tree with operations as nodes and values as leaves:
+\begin{center}
+    % https://tikzcd.yichuanshen.de/#N4Igdg9gJgpgziAXAbVABwnAlgFyxMJZABgBoAmAXVJADcBDAGwFcYkQAdDuZgIzhz0AxgGtgAdwD6ARgAEXLrIAeMgL4hVpdJlz5CKchWp0mrdlx79BoiZPLyFyu+s3bseAkWmlpxhizZETm4+AWExKQBmB0UAKhctEAx3PSJInz9TQODLMJspABYYjgdsMAS3XU8DUmJMgPMQq3DbAFZi2QBqCqSdD31kdKoafzMgi1DrCJkOlWkXYxgoAHN4IlAAMwAnCABbJEMQHAgkbxAACxh6KHZIMDYaQSxGW4I2VxBtvYPHk8QyC5XG5BO4PEC8GBgYEAuDnLAbHBIYgfL77RAFX4-QHXV73DSJVFIDFHP7pbHA8BvfGbHZosnHJCtGiXHEgqmqSiqIA
+    \begin{tikzcd}
+        &                                                             & \substack{w_5 \\ +} \arrow[ld, no head] \arrow[rd, no head] &                                           \\
+        & \substack{w_3 \\ *} \arrow[rd, no head] \arrow[ld, no head] &                                                             & \substack{w_4 \\ \sin} \arrow[d, no head] \\
+    \substack{w_1 \\ x_1} &                                                             & \substack{w_2 \\ x_2}                                       & \substack{w_1 \\ x_1}                    
+    \end{tikzcd}
+\end{center}
 We gave every possible subexpression a name $w_i$. Note that the outmost expression has the largest index and the innermost expressions have the smallest indices. Order of indices at the same level do not matter.
 
-In forward mode we calculate
+In forward mode we calculate the derivative
 \[ \dot w_i \coloneqq \diff{w_i}{x} \]
 from small $i$ to largest. For example if we know $\dot w_1$ and $\dot w_2$ we can (by using the product rule) calculate
 \[ \dot w_3 = w_1 \dot w_2 + \dot w_1 w_2. \]
@@ -21,41 +29,43 @@ With that (and $\dot w_4$) we can then find $\dot w_5$. Note that as stated abov
 
 \newcommand{\overw}[1]{\overline{w}_{#1}}
 \newcommand{\diffyw}[1]{\diff{y}{w_{#1}}}
-\todo{Cite Wikipedia reverse mode}
-For reverse mode we have to shift our focus from $\dot w_i$ to another main expression of concern, namely
+For the following parts we orient ourselves by the reverse mode example also from Wikipedia \cite{reverseAccumulationWiki}, again using similar notation and terminology. For reverse mode we have to shift our focus from $\dot w_i$ to another main expression of concern, namely
 \[ \overw{i} \coloneqq \diffyw{i} \]
-also called the adjoint. Instead of calculating the derivative of an subexpression $w_i$ with respect to $x$ it expresses the derivative of $y$ with respect to a particular subexpression $w_i$ of $y$. Why this expression concerns us now gets clear after looking at the corresponding usage of the chain rule \todo{Define chain rule?} which both differentiation styles are based on. Forward mode replaces all occurrences of $\dot w_i$ by using the chain rule which is the reason why that expression concerned us previously. The chain rule for backward mode is instead used to replace each occurrence of $\overw{i}$ recursively:
+also called the adjoint of $w_i$. Instead of calculating the derivative of an subexpression $w_i$ with respect to $x$ it expresses the derivative of $y$ with respect to a particular subexpression $w_i$ of $y$. Why this expression concerns us now gets clear after looking at the corresponding usage of the chain rule which both differentiation styles are based on. A quick reminder on the definition of the chain rule:
+\[ \diff{y}{x} = \diff{y}{z}\diff{z}{x} \]
+Forward mode replaces all occurrences of $\dot w_i$ by using the chain rule which is the reason why that expression concerned us previously. The chain rule for backward mode is instead used to replace each occurrence of $\overw{i}$ recursively:
 \newcommand{\diffw}[2]{\diff{w_{#1}}{w_{#2}}}
 \[ \diff{y}{x} = \diffyw{1}\diff{w_1}{x} = \bigg(\diffyw{2}\diffw{2}{1}\bigg)\diff{w_1}{x} = \bigg(\bigg(\diffyw{3}\diffw{3}{2}\bigg)\diffw{2}{1}\bigg)\diff{w_1}{x} = ... \]
-On first sight it might look like we traverse from $i = 1$ to $5$ but as one calculates the expression in the innermost parentheses first one can easily see that the iteration actually goes from large to small index opposed to forward mode \todogrammar.
+On first sight it might look like we traverse from $i = 1$ to $5$. However as one calculates the expression in the innermost parentheses first one can easily see that the iteration actually goes from large to small index opposed to forward mode.
 
-This usage of the chain rule essentially dictates how we compute the reverse mode derivative. Our job is to calculate all $\overw{i}$ by applying the chain rule recursively until we have rewritten it to an expression including trivial subexpressions or $\overw{j}$ with $j > i$ which we have already computed. \todo{You could interpret that as applying the chain rule in reverse order i.e.} We use the same $y$ as above:
+This usage of the chain rule essentially dictates how we compute the reverse mode derivative. Our job is to calculate all $\overw{i}$ by applying the chain rule recursively until we have rewritten it to an expression including trivial subexpressions or $\overw{j}$ with $j > i$ which we have already computed. We use the same $y$ as above and calculate the adjoints of subexpressions $w_5$ to $w_2$:
 \yExampleDiff
 \begin{align*}
     \overw{5}   & = \diffyw{5} = 1                                                                                                           \\
     \overw{4}   & = \diffyw{4} = \diffyw{5}\diffw{5}{4} = \overw{5}\diffw{5}{4} = 1                                                          \\
     \overw{3}   & = \diffyw{3} = \diffyw{5}\diffw{5}{3} = \overw{5}\diffw{5}{3} = 1                                                          \\
     \overw{2}   & = \diffyw{2} = \diffyw{5}\diffw{5}{2} = \bigg(\diffyw{5}\diffw{5}{3}\bigg)\diffw{3}{2} = \overw{3}\diffw{3}{2} = w_1       \\
-    \intertext{These were straight forward after recognizing the general pattern and required simple usage of the chain rule. Calculating $w_1$ it not as straight forward:}
+    \intertext{These were straight forward after recognizing the general pattern and required simple usage of the chain rule. Calculating $\overw{1}$ it not as straight forward:}
     \overw{1}^a & = \diffyw{1} = \diffyw{5}\diffw{5}{1} = \bigg(\diffyw{5}\diffw{5}{3}\bigg)\diffw{3}{1} = \overw{3}\diffw{3}{1} = w_2       \\
     \overw{1}^b & = \diffyw{1} = \diffyw{5}\diffw{5}{1} = \bigg(\diffyw{5}\diffw{5}{4}\bigg)\diffw{4}{1} = \overw{4}\diffw{4}{1} = \cos(w_1) \\
     \overw{1}   & = \overw{1}^a + \overw{1}^b
 \end{align*}
-We had to realise that $w_1$ appears in two ``calculation branches'' and had to handle them separately. Lastly the partial adjoints of all branches then have to be summed (implying that if $w_1$ would occur $n$ times we had to sum $n$ results) into the full adjoint.
+We had to realise that $w_1$ appears in two ``calculation branches'' and had to handle them separately. Lastly these partial adjoints (i.e. $\overw{1}^a$ and $\overw{1}^b$) of all branches then have to be summed (implying that if $w_1$ would occur $n$ times we had to sum $n$ results) into the full adjoint $\overw{1}$.
 
-The skilled reader could complain that this isn't as complicated as advertised \todowording earlier \todo{Did I?}. This is true for a human who can overlook the whole expression including all its subexpressions. A program on the other hand often only has a limited view of the whole expression. Consider this translation of our example into code:
+After some consideration and breaking down every step this process isn't very complicated. This is true for a human who can overlook the whole expression including all its subexpressions. A program on the other hand often only has a limited view of the whole expression. Consider this translation of our example into code:
 \begin{lstlisting}
 def w3 = w1 * w2
 def w4 = sin(w1)
 def y =  w3 + w4 // w5
 \end{lstlisting}
-At definition time of \lstinline{w3} we don't have enough information to calculate an andjoint because only after adding all context with the definition of \lstinline{y} we know all branches where \lstinline{w1} occurs. In fact \lstinline{y} could also be just another subexpression of a bigger calculation. Usually when evaluating expressions you can start evaluating the innermost subexpression and use its result to evaluate its containing expression as we did for forward mode differentiation. Unfortunately this isn't possible for reverse mode and directly using dual numbers as is doesn't suffice. We have to start with the top expressione $w_5$ and work our way down to (all occurrences of) $w_1$ (and $w_2$). This is very unnatural to implement because the information flows in reverse order (\reffig{fig:informationFlow}). \todo{Two arrows for reverse mode: values up, adjoints down}
+At definition time of \lstinline{w3} we don't have enough information to calculate a full andjoint because only after adding all context with the definition of \lstinline{y} we know all branches where \lstinline{w1} occurs. In fact \lstinline{y} could also be just another subexpression of a bigger calculation. Usually when evaluating expressions you can start evaluating the innermost subexpression and use its result to evaluate its containing expression as we did for forward mode differentiation. This had the advantage that we could calculate the normal result values and the derivative of each subexpression simultaniously. Unfortunately this isn't possible for reverse mode and directly using dual numbers as is doesn't suffice. We have to start with the top expressione $w_5$ and work our way down to (all occurrences of) $w_1$ (and $w_2$). This is very unnatural to implement because the information flows in reverse order. On top of that when iterating from outer to inner expression we can no longer calculate the normal result. Naturally at some point we have to calculate these values too. The only option we have is to do an full \emph{forward pass} (inner to outer) to calculate the result values and another full \emph{backward pass} (outer to inner) to calculate the (partial) adjoints of every subexpression (also see \reffig{fig:informationFlow}). Fortunately the forward pass is trivial as it only has to calculate arithmetic results in usual recursive order.
+
 \begin{center}
-    % https://tikzcd.yichuanshen.de/#N4Igdg9gJgpgziAXAbVABwnAlgFyxMJZABgBoAmAXVJADcBDAGwFcYkQAdDuZgIzhz0AxgGtgAdwD6ARgAEXLrIAeMgL4hVpdJlz5CKchWp0mrdlx79BoiZPLyFyu+s3bseAkWmlpxhizZETm4+AWExKQBmB0UAKhctEAx3PSJInz9TQODLMJspABYYjgdsMAS3XU8DUmJMgPMQq3DbAFZi2QBqCqSdD31kdKoafzMgi1DrCJkOlWke5KqBgqMRrPYNRMX+ohW6tYagjWMYKABzeCJQADMAJwgAWyRDEBwIJG8QAAsYeih2SBgNg0QRYRgAghsVwgO6PZ4g96IMjfX7-IKA4EgXgwMBo5FwL5Ya44JDEaGwp6IFavREvH5-CFAzY3e6U6lvJDpFEM9GQ5kw1mchFIVo0elo8B88mCxAANmFiAA7DQCUSSYgXqNshNmjYuDgYEocMBrhBbuJ6LcoKoOvrDcaHtAYKp1CD6GDGVDEhSkMqaUh5SBVcSkABaUUmQ45SYtO1G4C3GC0GC3ODO20cA3xx2wF3HVRAA
-    \begin{tikzcd}
-        &                                                             & \substack{w_5 \\ +} \arrow[ld, no head] \arrow[rd, no head] &                                           & {} \arrow[dd, "\substack{\text{reverse} \\ \text{mode}}", shift left=5]  \\
-        & \substack{w_3 \\ *} \arrow[rd, no head] \arrow[ld, no head] &                                                             & \substack{w_4 \\ \sin} \arrow[d, no head] &                                                                          \\
-    \substack{w_1 \\ x_1} &                                                             & \substack{w_2 \\ x_2}                                       & \substack{w_1 \\ x_1}                     & {} \arrow[uu, "\substack{\text{forward} \\ \text{mode}}", shift right=2]
+    % https://tikzcd.yichuanshen.de/#N4Igdg9gJgpgziAXAbVABwnAlgFyxMJZARgBoAmAXVJADcBDAGwFcYkQAdDuZgIzhz0AxgGtgAdwD6xAARcuMgB7SAviBWl0mXPkIoAzBWp0mrdlx79BoiZPJz5Su2o1bseAkXKlixhizZETm4+AWExKX0HBQAqF00QDHddIgAWHz9TQODLMJspVOiOB2wweLcdTwNSAAZMgPMQq3DbAFYimQBqcsTtDz1kdKoafzMgi1DrCOkO5WIepMqB1qMRrPZ1BMX+ohW6tYbxjhwYRRxgACcYWhgLuBgZAFtoGAW+lJQa1ZNDkE2KnafWr1MbBE5nYAAMwgF3E9AuUCeLxcxhgUAA5vAiKBIRcII8kN4QDgIEgyCAABYwehQdiQMBsGiCLCMOkENiuEC4-GEpmkxBfSnU2lBemMkC8GBgEWCuAUrCQnBIGqc7kExDpYn8olUmlshn-Ll49WaklIQxCvWi9mGtXmvlIFaWkXgG2q41IABsDsQAHYaHKFUrEABaImjbITZo2Ljg87Q2HwqAqDqx07nND0OBwFPyYppiFCfFoZgnHOp47p4ARnNqJn0Fn6jkJO1+n3ekCBxVIEPkiONXJTYAF85XG53V4VuPATPZ3OOEfAIuPEtl+cKRc0gBWECwYBwtdtHsQAA4fQBOGiMeiSxgABXeVRAFyw6IpSoD8u7AoOoKjeTERdl1XeB13zSsIRrMCHGnehpWgxdYBfBg8BuQ8VEoFQgA
+\begin{tikzcd}
+    \text{forward mode}                                                                               &                       &                                                             & \substack{w_5 \\ +} \arrow[ld, no head] \arrow[rd, no head] &                                           & \text{reverse mode} \arrow[dd, "\substack{\text{reverse} \\ \text{pass} \\ \text{computes} \\ \text{adjoints}}", shift left] \\
+                                                                                                      &                       & \substack{w_3 \\ *} \arrow[rd, no head] \arrow[ld, no head] &                                                             & \substack{w_4 \\ \sin} \arrow[d, no head] &                                                                                                                              \\
+    {} \arrow[uu, "\substack{\text{computes} \\ \text{values} \\ \text{and} \\ \text{derivatives}}"'] & \substack{w_1 \\ x_1} &                                                             & \substack{w_2 \\ x_2}                                       & \substack{w_1 \\ x_1}                     & {} \arrow[uu, "\substack{\text{forward} \\ \text{pass} \\ \text{computes} \\ \text{values}}", shift left=2]                 
     \end{tikzcd}
 
     \captionsetup{type=figure}
@@ -63,7 +73,7 @@ At definition time of \lstinline{w3} we don't have enough information to calcula
 	\label{fig:informationFlow}
 \end{center}
 
-The main takeaway from this elaborate \todowording example is an important pattern which we will be utilizing to implement reverse mode differentiation. The second last term of every calculation of $\overw{i}^z$ with $z \in \{a, b, ...\}$ \todo{explain z better?, we could also write $\overw{5} = \overw{5}^a = ...$ instead} has always the following pattern:
+The main takeaway from this extensive example is an important pattern which we will be utilizing to implement the reverse pass. The second last term of every calculation of $\overw{i}^z$ (i.e. the partial adjoint of the $z$-th occurrence of $w_i$) with $z \in \{a, b, ...\}$ has always the following pattern:
 \newcommand{\defoverwiz}{\overw{i}^z = \overw{p}\diff{w_p}{w_i^z}}
 \[ \defoverwiz \]
 for some $p$. This $p$ (\emph{parent index}) isn't at all random. $w_p$ is always the parent expression of that specific occurrence $w_i^z$ of $w_i$. We use the superscript to distinguish specific occurrences. We also could have written $y$ like (notice the added superscripts $a$ and $b$)
@@ -73,18 +83,22 @@ for some $p$. This $p$ (\emph{parent index}) isn't at all random. $w_p$ is alway
       & = w_3^a    &  & + w_4^a       \\
       & =        &  & w_5^a
 \end{alignat*}
-to further emphasize distinct occurrences of expressions $w_i$. Usually we omit the superscript if that expression only occurs once. Actually $w_i$ can only occur multiple times (i.e. having a ``$b$'' superscript) if $w_i = x_i$, i.e. it is one of our variables which we differentiate our function with respect to \todogrammar. In other words: Equal expressions are not counted as multiple occurrences and for that matter only $x_i$ count.
+to further emphasize distinct occurrences of expressions $w_i$. Usually we omit the superscript if that expression only occurs once. Actually $w_i$ can only occur multiple times (i.e. having a ``$b$'' superscript) if $w_i = x_i$, i.e. it is one of our variables (i.e. in this case either $x_1$ or $x_2$). In other words: Equal expressions are not counted as multiple occurrences and for that matter only $x_i$ count.
 
 When boiling down
 \[ \overw{i}^z = \overw{p}\diff{w_p}{w_i^z} = \diffyw{p}\diff{w_p}{w_i^z} \]
 further we realize that we have to compute the derivative of the parent expression with respect to $w_i^z$. This is fortunately comparatively easy. A parent expression will always be an atomic operation (e.g. (*), (+), (-), $\sin$) and $w_i^z$ is always a direct argument. Because we usually know the derivative of each of our atomic operations, we can simply handle every case, e.g. for multiplication:
 \[ \diff{w_p}{w_i^z} = \diff{(w_i^z \cdot w_k)}{w_i^z} = w_k \]
-The remaining and main task is to find $\overw{p}$, \todopunctuation the adjoint of the parent expression (i.e. the derivative of $y$ with respect to $w_p$). This is a recursive problem but unfortunately in reverse order because information flows from outer expression to inner \todo{or inner to outer?, just remove?} as already illustrated in \reffig{fig:informationFlow}. Solving this ``reversed flow of information'' to calculate $\overw{p}$ elegantly, efficiently or easily to reason about is the main goal of the following implementations. \todo{define better goal according to goal of my theses?}
+The remaining and main task is to find $\overw{p}$, the adjoint of the parent expression (i.e. the derivative of $y$ with respect to $w_p$). This is a recursive problem but unfortunately in reverse order because information flows from outer expression to inner which is the reason why this is called the reverse pass as already illustrated in \reffig{fig:informationFlow}. Solving this ``reversed flow of information'' to calculate $\overw{p}$ elegantly, efficiently or easily to reason about is the main goal of the following implementations.
 
 
-\section{Using mutation}
+\section{Using mutation} \label{sec:mutation}
 \input{content/implementation/reverseMode/mutation/cps.tex}
 \input{content/implementation/reverseMode/mutation/tape.tex}
+\input{content/implementation/reverseMode/mutation/monad.tex}
 
-\section{Without mutation}
+\section{Without mutation} \label{sec:noMutation}
+%\input{content/implementation/reverseMode/functional/whyFunctional.tex}
 \input{content/implementation/reverseMode/functional/functionalCps.tex}
+\input{content/implementation/reverseMode/functional/functionalMonad.tex}
+\input{content/implementation/reverseMode/functional/chad.tex}

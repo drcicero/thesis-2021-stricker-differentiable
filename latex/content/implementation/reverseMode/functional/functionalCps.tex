@@ -1,1 +1,67 @@
-\subsection{Continuation Passing Style (CPS)}
+\subsection{Continuation Passing Style (CPS)} \label{sec:functionalCps}
+
+To eliminate mutation we have to firstly detect where mutation even occurs. Looking at the implementation of mutable CPS (\reflst{lst:cpsDual}) we directly find the culprit in the first line. The second member of \lstinline{Dual}, namely \lstinline{adjoint}, is mutable. As a matter of fact that is the only mutable state we use and therefore we have to remove it. \lstinline{Dual} is no longer a dual number when we remove its second member so we rename it to just \lstinline{Num} accordingly. Simply changing \lstinline{adjoint} to a \lstinline{val} would not suffice because we cannot know the adjoint of a \lstinline{Dual} at creation time because the adjoint has to be \emph{accumulated} from multiple branches. Adding an accumulator which is recursively propagated is consequently the logical next step. For this step we have to remember the obvious but critical fact that the reverse pass is indeed \emph{reverse} and we want to propagate the accumulator from parent to children. This is opposed to usual recursive algorithms where each child passes the accumulator to its parent until it reaches the top expression. The top expression uses the full accumulator to produce the full result. To achieve the reversed recursive pass through all expressions we still abuse continuations to build a stack which is naturally traversed in reverse order. The remaining task is to propagate the accumulator correctly. Let's look at the finished code and work along it to understand how one could implement that:
+\begin{lstlisting}
+type Adjoints = Map[Num, Double]
+type Continuation = Num => Adjoints
+
+class Num(val x: Double):
+    def *(that: Num)(k: Continuation): Adjoints =
+        val parent = Num(this.x * that.x)
+
+        def addPartialAdjoint(
+            thisOrThat: Num, 
+            derivativeWrtThisOrThat: Double, 
+            adjoints: Adjoints
+        ): Adjoints =
+            val partialAdjoint = 
+                adjoints(parent) * derivativeWrtThisOrThat
+            val newAdjointThisOrThat = 
+                adjoints(thisOrThat) + partialAdjoint
+            adjoints + (thisOrThat -> newAdjointThisOrThat)
+        end addPartialAdjoint
+
+        val adjointsWithParent = k(parent)
+        val adjointsWithThis = 
+            addPartialAdjoint(this, that.x, adjointsWithParent)
+        val adjointsWithThat = 
+            addPartialAdjoint(that, this.x, adjointsWithThis)
+        adjointsWithThat
+    end *
+
+    def +(that: Num)(k: Continuation): Adjoint = ???
+end Num
+\end{lstlisting}
+In line 1 and 2 we assign names to two important types so that we can reason more easily about this implementation. The accumulator we use is of type \lstinline{Adjoints} and maps each expression to its currently accumulated adjoint. \lstinline{Continuation} is exactly that, the continuation of our program as seen before but with one major change. In previous implementations continuations returned the actual calculated result hence the type \lstinline{Dual => Dual} (\reflst{lst:cpsDual}). This seems somewhat convenient at first but we ignored the final result anyway (and could have used \lstinline{Unit} instead). Remember that continuations represent the calculation of ancestor expressions and so is perfectly suited to pass the currently accumulated adjoints to its descendants. Therefore continuations now return \lstinline{Adjoints} instead of \lstinline{Num}. 
+
+The helper function \lstinline{addPartialAdjoint} is very similar to the mutable approach (\reflst{lst:cpsDual}) but because \lstinline{Adjoints} is immutable it has to take the current adjoints as a parameter and return an updated version with the added partial adjoint for \lstinline{thisOrThat}. Line 13 just computes the current partial adjoint using the adjoint of the parent expression which is exactly what happened in the mutable CPS implementation. Line 14 and 15 essentially just add \lstinline{partialAdjoint} onto the current value in the \lstinline{adjoints} accumulator. This translates exactly to the \lstinline{+=} operation used in the mutable version (\reflst{lst:cpsDual}).
+
+Line 17 calls the continuation to get the adjoint of the current parent (and all other accumulated ancestor adjoints, potentially including \lstinline{this} or \lstinline{that}). Remember that at this point the stack builds up and the following lines are executed from top expression to children expressions. \lstinline{addPartialAdjoint} is called twice very similar to the mutable approach. The most important part here is to always pass the latest updated adjoints to the next call. In the end we effectively return all adjoints of all ancestors we got from \lstinline{k} and also the updated adjoints of \lstinline{this} and \lstinline{that}. After we return, the next descendant now gets those updated adjoints from its call to its \lstinline{k}.
+
+Finally we just have to define the usual \lstinline{differentiate} function. As always we have to manually set the adjoint of the top expression to 1. In this case this is done by initializing the \lstinline{Adjoints} map with the \lstinline{topExpression} as key and 1 as value (line 7). Setting the default value of the map to 0 (line 7) is also important. Basically it initializes all adjoints of all expressions to 0 so that we can sum all partial adjoints without checking first if the key already exists in the map. 
+\begin{lstlisting}
+given Conversion[Double, Num] = Num(_)
+given Conversion[Int, Num] = Num(_)
+
+def differentiate(
+    f: Num => Continuation => Adjoints, 
+    x: Double
+): Double =
+    val xNum = Num(x)
+    val allAdjoints = f(xNum) { (topExpression: Num) =>
+        Map(topExpression -> 1.0).withDefaultValue(0)
+    }
+    allAdjoints(xNum)
+end Num
+
+def f(x: Num)(k: Continuation): Adjoints =
+    (2 * x) { y1 =>
+        (x * x) { y2 =>
+            (y2 * x) { y3 =>
+                (y1 + y3) { k }
+            }
+        }
+    }
+
+val derivative = differentiate(f, 3)
+\end{lstlisting}

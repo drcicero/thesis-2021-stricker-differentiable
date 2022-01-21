@@ -1,6 +1,5 @@
-\subsection{Tape}
+\subsection{Tape} \label{sec:tape}
 
-\todocite{Lantern paper}
 The following implementation is very similar to CPS but instead of building a stack of calls implicitly by calling continuations we build that ``call stack'' manually. Remember that the only goal we achieved by using continuations was a two pass design which we used to do some operations (compute regular result) in normal order and some operations (compute adjoint) in reverse order through the expression tree. Another way to achieve this is to do the forward pass as usual but on the way additionally save all operations which have to be done in the reverse pass for later. When we have collected every operation we just execute them in ``reverse'' order:
 \begin{lstlisting}[mathescape=true]
 var tape: Unit => Unit = _ => ()
@@ -17,6 +16,7 @@ case class Dual(x: Double, var adjoint: Double):
                 val partialAdjoint = 
                     localResult.adjoint * derivativeWrtThisOrThat
                 thisOrThat.adjoint += partialAdjoint
+        end addPartialAdjoint
 
         tape = addPartialAdjoint(this, that.x) andThen tape
         tape = addPartialAdjoint(that, this.x) andThen tape
@@ -49,7 +49,7 @@ val derivative = differentiate(f)(3)
 \end{lstlisting}
 Because \lstinline{tape} is a global variable we have to remember to reset it for every differentiation (line 2). We then call \lstinline{f} in line 4 to do the forward pass and to populate the \lstinline{tape}. Similar to CPS we have to manually set the adjoint of the top expression to $1 = \diff{y}{y}$ (line 5). At this point no differentiation has been done yet. We have to call \lstinline{tape} to start it manually (as it takes a \lstinline{Unit} we have to pass its only inhabitant, namely ``\lstinline{()}''). The definition of \lstinline{f} (line 10 and 11) is possibly the most interesting change. We don't need any continuations and can omit variable names which makes it easier to read and write. 
 
-To make the definition of \lstinline{f} even more regular \todowording we can define an implicit conversion which converts a constant into \lstinline{Dual} automatically. For this we use \lstinline{given} instances of \lstinline{Conversion} which were introduced in Scala 3. They specifically describe the intent to convert a value. Previously \lstinline{implicit} methods were used for this but their semantics were overloaded and for example have also been used to define extension methods.\todocite{Scala 3 docs} The first \lstinline{given} instance (line 1) is not needed for this example but is included for completeness if one uses decimal numbers:
+To make the definition of \lstinline{f} even more regular we can define an implicit conversion which converts a constant into \lstinline{Dual} automatically. For this we use \lstinline{given} instances \cite{givensScala3} of \lstinline{Conversion} \cite{conversionsScala3} which were introduced in Scala 3. They specifically describe the intent to convert a value. Previously \lstinline{implicit} methods were used for this but their semantics were overloaded and for example have also been used to define extension methods. The first \lstinline{given} instance (line 1) is not needed for this example but is included for completeness if one uses decimal numbers:
 \begin{lstlisting}
 given Conversion[Double, Dual] = Dual(_, 0)
 given Conversion[Int, Dual] = Dual(_, 0)
@@ -59,10 +59,12 @@ def f(x: Dual): Dual =
     2 * x + x * x * x
 \end{lstlisting}
 
-\todo{Own section?}
 So far we have only done reverse mode differentiation for one variable. As mentioned previously reverse mode differentiation shines when having multiple input variables. Therefore it's apparent to make an example which supports that. Extending the tape implementation to take multiple variables is mostly trivial as we only have to change the \lstinline{differentiate} function:
 \begin{lstlisting}
-def differentiate(f: List[Dual] => Dual)(xs: List[Double]): List[Double] =
+def differentiate(
+    f: List[Dual] => Dual, 
+    xs: List[Double]
+): List[Double] =
     tape = _ => ()
     val xsDual: List[Dual] = xs map { Dual(_, 0) }
     f(xsDual).adjoint = 1
@@ -73,7 +75,7 @@ end differentiate
 def f(xs: List[Dual]): Dual =
     2 * xs(0) + xs(1) * xs(2) * xs(2)
 
-val derivatives: List[Double] = differentiate(f)(List(3.0, 5.0, 2.0))
+val derivatives: List[Double] = differentiate(f, List(3.0, 5.0, 2.0))
 \end{lstlisting}
 We encode multiple variables as a single vector of type \lstinline{List[Dual]}. Because \lstinline{f} now takes a \lstinline{List[Dual]}, \lstinline{differentiate} has to reflect that by accepting a function \lstinline{List[Dual] => Dual} and a vector of values to differentiate \lstinline{f} at. In line 6 we extract the \lstinline{adjoint} of each variable which ultimately gives us a vector where every value is the derivative with respect to one variable. In other words we computed the gradient of \lstinline{f}. The main takeaway here is that we computed the derivative of multiple variables in one go without having to call \lstinline{differentiate} multiple times with different values. This is only possible with reverse mode and is its main advantage. Forward mode would have to do one full differentiation for each variable where all other variable are set to 0.
 
