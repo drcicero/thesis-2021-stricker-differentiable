@@ -31,7 +31,7 @@ With that (and $\dot w_4$) we can then find $\dot w_5$. Note that as stated abov
 \newcommand{\diffyw}[1]{\diff{y}{w_{#1}}}
 For the following parts we orient ourselves by the reverse mode example also from Wikipedia \cite{reverseAccumulationWiki}, again using similar notation and terminology. For reverse mode we have to shift our focus from $\dot w_i$ to another main expression of concern, namely
 \[ \overw{i} \coloneqq \diffyw{i} \]
-also called the adjoint of $w_i$. Instead of calculating the derivative of an subexpression $w_i$ with respect to $x$ it expresses the derivative of $y$ with respect to a particular subexpression $w_i$ of $y$. Why this expression concerns us now gets clear after looking at the corresponding usage of the chain rule which both differentiation styles are based on. A quick reminder on the definition of the chain rule:
+also called the adjoint of $w_i$. Instead of calculating the derivative of a subexpression $w_i$ with respect to $x$ it expresses the derivative of $y$ with respect to a particular subexpression $w_i$ of $y$. Why this expression concerns us now gets clear after looking at the corresponding usage of the chain rule which both differentiation styles are based on. A quick reminder on the definition of the chain rule:
 \[ \diff{y}{x} = \diff{y}{z}\diff{z}{x} \]
 Forward mode replaces all occurrences of $\dot w_i$ by using the chain rule which is the reason why that expression concerned us previously. The chain rule for backward mode is instead used to replace each occurrence of $\overw{i}$ recursively:
 \newcommand{\diffw}[2]{\diff{w_{#1}}{w_{#2}}}
@@ -56,7 +56,7 @@ After some consideration and breaking down every step this process isn't very co
 \begin{lstlisting}
 def w3 = w1 * w2
 def w4 = sin(w1)
-def y =  w3 + w4 // w5
+def y  = w3 + w4 // w5
 \end{lstlisting}
 At definition time of \lstinline{w3} we don't have enough information to calculate a full andjoint because only after adding all context with the definition of \lstinline{y} we know all branches where \lstinline{w1} occurs. In fact \lstinline{y} could also be just another subexpression of a bigger calculation. Usually when evaluating expressions you can start evaluating the innermost subexpression and use its result to evaluate its containing expression as we did for forward mode differentiation. This had the advantage that we could calculate the normal result values and the derivative of each subexpression simultaniously. Unfortunately this isn't possible for reverse mode and directly using dual numbers as is doesn't suffice. We have to start with the top expressione $w_5$ and work our way down to (all occurrences of) $w_1$ (and $w_2$). This is very unnatural to implement because the information flows in reverse order. On top of that when iterating from outer to inner expression we can no longer calculate the normal result. Naturally at some point we have to calculate these values too. The only option we have is to do an full \emph{forward pass} (inner to outer) to calculate the result values and another full \emph{backward pass} (outer to inner) to calculate the (partial) adjoints of every subexpression (also see \reffig{fig:informationFlow}). Fortunately the forward pass is trivial as it only has to calculate arithmetic results in usual recursive order.
 

@@ -12,30 +12,63 @@ class DeeplyNestedExecutionTimeComparisonTest extends AnyFunSuite {
   // maybe use relative equality
   implicit val doubleEq: Equality[Double] = tolerantDoubleEquality(0.000000000001)
 
-  val nNestings: Int = 120
-  val nestingsRange: Range = 0 until nNestings
+  val nestingStep: Int = 10
+  val nestingStart: Int = 0
+  val globalNestingStop: Int = 3000
 
-  val xs = Range.BigDecimal(0, 3000, 1).map(_.toDouble)
+  val n = 100000
+  val xs = Range.BigDecimal(0, n, 1).map(_.toDouble)
 
-  def assertAndTime(grad: Double => Double, testName: String) =
+  def time(grad: Double => Double, testName: String = "test") =
+    var i = 0
     val startTimeNano = System.nanoTime()
-    val actualDiffs = xs map grad
+    while i < n do
+      grad(i)
+      i += 1
     val endTimeNano = System.nanoTime()
-    val excecutionTimeMilli = TimeUnit.NANOSECONDS.toMillis(endTimeNano - startTimeNano)
 
-    print(s"$testName: $excecutionTimeMilli ms")
 
-  test("forward dual number") {
+//    val excecutionTimeMilli = TimeUnit.NANOSECONDS.toMillis(endTimeNano - startTimeNano)
+    val executionTimeNano = endTimeNano - startTimeNano
+    val executionTimeOneExpression = executionTimeNano / n
+
+//    print(s"$testName: $executionTimeOneExpression ns")
+    executionTimeOneExpression
+
+  ignore("forward dual number") {
     import differentiable.dualnumber.{_, given}
 
     def f(x: Dual): Dual =
     // 0.1x^3 + 2x^2 + 0.6x + 2x^2 + 31x + x - x = 0.1x^3 + 4x^2 + 31.6x =d=> 0.3x^2 + 8x + 31.6
       0.1 * x * x * x + 2 * x * (x + 0.3 + x * 1) + 31 * x + x + -1 * x
 
-    assertAndTime(differentiate(nestingsRange.foldLeft(f)((l, _) => l andThen f)), "forward dual number")
+    val nestingStop = 2000
+    timeNestings(differentiate, f, nestingStop, "forward dual number")
+
   }
-  
-  test("reverse cps") {
+
+  private def timeNestings[A](differentiate: (A => A) => Double => Double, f: A => A, nestingStop: Int, testName: String): Unit =
+    def timeOneNesting(i: Int) =
+      val result = time(differentiate((0 until i).foldLeft(f)((l, _) => l andThen f)))
+      s"$i, $result"
+
+    timeNestingsWithIncreasingStep(timeOneNesting, nestingStop, testName)
+
+  private def timeNestingsWithIncreasingStep(timeOneNesting: Int => String, nestingStop: Int, testName: String): Unit =
+    def fromToBy(from:Int, until: Int, by: Int) = from until (until min (nestingStop + 1) min globalNestingStop) by by map timeOneNesting
+
+    val times =
+      fromToBy(nestingStart, 10, 1) appendedAll
+        fromToBy(10, 150, 10) appendedAll
+        fromToBy(150, 300, 25) appendedAll
+        fromToBy(300, 1000000, 500)
+
+
+
+    print(s"$testName: ${times.mkString("(", ") (", ")")}")
+
+
+  ignore("reverse cps") {
     import differentiable.reversemode.cps.{_, given}
 
     def f(x: Dual)(k: Dual => Dual): Dual =
@@ -70,15 +103,19 @@ class DeeplyNestedExecutionTimeComparisonTest extends AnyFunSuite {
       }
     end f
 
-    assertAndTime(differentiate(
-      nestingsRange.foldLeft(f) { (l, _) =>
-        x =>
-          k =>
-            l(x)(r => f(r)(k))
+    val nestingStop = 130
+    def timeOneNesting(i: Int) =
+      val result = time(differentiate(
+        (0 until i).foldLeft(f) { (l, _) =>
+          x =>
+            k =>
+              l(x)(r => f(r)(k))
 
-      }
-    )
-      , "reverse cps")
+        }))
+      s"$i, $result"
+    end timeOneNesting
+
+    timeNestingsWithIncreasingStep(timeOneNesting, nestingStop, "reverse cps")
   }
 
   test("reverse cps functional") {
@@ -116,12 +153,19 @@ class DeeplyNestedExecutionTimeComparisonTest extends AnyFunSuite {
       }
     end f
 
-    assertAndTime(grad(nestingsRange.foldLeft(f) { (l, _) =>
-      x =>
-        k =>
-          l(x)(r => f(r)(k))
+    val nestingStop = 140
 
-    }), "reverse cps functional")
+    def timeOneNesting(i: Int) =
+      val result = time(grad(
+        (0 until i).foldLeft(f) { (l, _) =>
+          x =>
+            k =>
+              l(x)(r => f(r)(k))
+
+        }))
+      s"$i, $result"
+
+    timeNestingsWithIncreasingStep(timeOneNesting, nestingStop, "reverse cps functional")
   }
 
   test("reverse tape") {
@@ -130,7 +174,8 @@ class DeeplyNestedExecutionTimeComparisonTest extends AnyFunSuite {
     def f(x: Dual): Dual =
       0.1 * x * x * x + 2 * x * (x + 0.3 + x * 1) + 31 * x + x + -1 * x
 
-    assertAndTime(grad(nestingsRange.foldLeft(f)((l, _) => l andThen f)), "reverse tape")
+    val nestingStop = 280//130
+    timeNestings(grad, f, nestingStop, "reverse tape")
   }
 
 /*
@@ -145,7 +190,6 @@ class DeeplyNestedExecutionTimeComparisonTest extends AnyFunSuite {
 */
 
 
-  /*
   test("reverse monad") {
     import differentiable.reversemode.monadcps.{_, given}
 
@@ -175,12 +219,12 @@ class DeeplyNestedExecutionTimeComparisonTest extends AnyFunSuite {
       } yield g2
     end f
 
-    assertAndTime(grad(nestingsRange.foldLeft(f)((l, _) => l andThen f)), "reverse monad")
+    val nestingStop = 280
+    timeNestings(grad, f, nestingStop, "reverse monad")
   }
-  */
 
 
-  test("reverse monad functional") {
+  ignore("reverse monad functional") {
     import differentiable.reversemode.monadcps.functional.{_, given}
 
     def f(xM: DualMonad): DualMonad =
@@ -209,10 +253,11 @@ class DeeplyNestedExecutionTimeComparisonTest extends AnyFunSuite {
       } yield g2
     end f
 
-    assertAndTime(grad(nestingsRange.foldLeft(f)((l, _) => l andThen f)), "reverse monad functional")
+    val nestingStop = 7000 // 7000 still works
+    timeNestings(grad, f, nestingStop, "reverse monad functional")
   }
 
-  test("reverse monad functional forless") {
+  ignore("reverse monad functional forless") {
     import differentiable.reversemode.monadcps.functional.forless.{_, given}
 
     def f(xM: Monad): Monad =
@@ -241,10 +286,10 @@ class DeeplyNestedExecutionTimeComparisonTest extends AnyFunSuite {
       }
     end f
 
-    assertAndTime(grad(nestingsRange.foldLeft(f)((l, _) => l andThen f)), "reverse monad functional forless")
+    val nestingStop = 7000 // 7000 still works
+    timeNestings(grad, f, nestingStop, "reverse monad functional forless")
   }
 
-  /*
   test("reverse chad") {
     import differentiable.reversemode.chad.{_, given}
 
@@ -252,9 +297,12 @@ class DeeplyNestedExecutionTimeComparisonTest extends AnyFunSuite {
     def f(x: Dual[Double, Double]): Dual[Double, Double] =
       0.1 * x * x * x + 2 * x * (x + 0.3 + x * 1) + 31 * x + x + -1 * x
 
-    assertAndTime(x => (0 until 4).foldLeft(f)((l, _) => l andThen f)(variable(x)).d(1), "reverse chad")
+
+    def differentiate(f: Dual[Double, Double] => Dual[Double, Double])(x: Double) =
+      f(variable(x)).d(1)
+
+    timeNestings(differentiate, f, 5, "reverse chad")
   }
-  */
 
 
   /*

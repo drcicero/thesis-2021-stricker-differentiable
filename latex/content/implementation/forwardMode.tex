@@ -29,12 +29,12 @@ To implement an operation on these we have to define the actual computation and 
 case class Dual(v: Double, d: Double):
     def *(that: Dual) = Dual(
       this.v * that.v,
-      this.v * that.d + this.d * that.v
+      this.v * that.d + this.d * that.v // product rule
     )
   
     def +(that: Dual) = Dual(
       this.v + that.v,
-      this.d + that.d
+      this.d + that.d // sum rule
     )
 \end{lstlisting}
 As we can see, this comes down to translating mathematic symbolic differentiation rules into code (lines 4 and 9). How to define constants and the variable (i.e. x) also comes naturally:
@@ -49,14 +49,15 @@ def differentiate(f: Dual => Dual)(x: Double): Double =
     result.d // result.v would be the actual result of f(x)
 
 def f(x: Dual): Dual = const(2) * x + x * x * x
+val derivative = f(variable(3)).d
 
 val derivative = differentiate(f)(3)  
 \end{lstlisting}
 
 
 
-\section{Static typing taken too far (Or: Let the compiler code for you)} \label{sec:matchTypes}
-To explain the following approach we first have to look at match types which are essentially functions but at type level. We put one type in, look at it and decide which type to ``return''. It gets clear with the following example taken from the Scala 3 docs \cite{matchTypesScala3}. You could get the element type of any list-like type:
+\section{Match Types} \label{sec:matchTypes}
+To explain the following approach we first have to look dat match types which are essentially functions but at type level. We put one type in, look at it and decide which type to ``return''. It gets clear with the following example taken from the Scala 3 docs \cite{matchTypesScala3}. You could get the element type of any list-like type:
 \begin{lstlisting}
 type Elem[X] = X match
     case String => Char
@@ -75,7 +76,7 @@ type D[T <: Term] <: Term = T match
     case V[_] => 
         V[0]
 \end{lstlisting}
-\lstinline{T} is just a type but represents a full calculation. Furthermore notice that the \lstinline{*} and \lstinline{+} operators seen above are infix types and not methods:
+\lstinline{T} is just a type but represents a full calculation. Furthermore, notice that the \lstinline{*} and \lstinline{+} operators seen above are infix types and not methods:
 \begin{lstlisting}
 type +[L <: Term, R <: Term] <: Term
 type *[L <: Term, R <: Term] <: Term

@@ -8,74 +8,65 @@ import java.util.concurrent.TimeUnit
 import scala.annotation.tailrec
 import scala.language.implicitConversions
 
-class ExecutionTimeComparisonTest extends AnyFunSuite {
+class DeeplyNestedExecutionTimeComparisonInlineTest extends AnyFunSuite {
   // maybe use relative equality
   implicit val doubleEq: Equality[Double] = tolerantDoubleEquality(0.000000000001)
 
-  def expectedDerivative(x: Double) =
-    0.3 * x * x + 8 * x + 31.6
+  val nestingStep: Int = 10
+  val nestingStart: Int = 0
 
-  val n = 100000 // 5000000
+  val n = 10000
   val xs = Range.BigDecimal(0, n, 1).map(_.toDouble)
-//  val xs = Range.BigDecimal.inclusive(-10, 10, 0.0001).map(_.toDouble)
-  val expectedDiffs = xs map expectedDerivative
 
-  def assertAndTime(grad: Double => Double, testName: String) =
+  def time(grad: Double => Double, testName: String = "test") =
+    var i = 0
     val startTimeNano = System.nanoTime()
-    val actualDiffs = xs map grad
+    while i < n do
+      grad(i)
+      i += 1
     val endTimeNano = System.nanoTime()
+
+
 //    val excecutionTimeMilli = TimeUnit.NANOSECONDS.toMillis(endTimeNano - startTimeNano)
     val executionTimeNano = endTimeNano - startTimeNano
     val executionTimeOneExpression = executionTimeNano / n
 
-    print(s"$testName: $executionTimeOneExpression ns")
-
-//    expectedDiffs zip actualDiffs zip xs foreach { case ((expected, actual), x) =>
-//      assert(expected === actual, s"x=$x")
-//    }
-
+//    print(s"$testName: $executionTimeOneExpression ns")
+    executionTimeOneExpression
 
   test("forward dual number") {
-    import differentiable.dualnumber.{_, given}
+    import differentiable.dualnumber.{*, given}
 
     def f(x: Dual): Dual =
     // 0.1x^3 + 2x^2 + 0.6x + 2x^2 + 31x + x - x = 0.1x^3 + 4x^2 + 31.6x =d=> 0.3x^2 + 8x + 31.6
       0.1 * x * x * x + 2 * x * (x + 0.3 + x * 1) + 31 * x + x + -1 * x
 
-    assertAndTime(differentiate(f), "forward dual number")
+
   }
 
-  test("forward dual number macro") {
-    import differentiable.dualnumber.{_, given}
+  private def timeNestings[A](differentiate: (A => A) => Double => Double, f: A => A, nestingStop: Int, testName: String): Unit =
+    def timeOneNesting(i: Int) =
+      val result = time(differentiate((0 until i).foldLeft(f)((l, _) => l andThen f)))
+      s"$i, $result"
 
-    assertAndTime(
-      macroDifferentiate(x => 0.1 * x * x * x + 2 * x * (x + 0.3 + x * 1) + 31 * x + x + -1 * x),
-      "forward dual number macro"
-    )
-  }
+    timeNestingsWithIncreasingStep(timeOneNesting, nestingStop, testName)
 
-  test("forward match type") {
-    import differentiable.matchtype.{_, given}
+  private def timeNestingsWithIncreasingStep(timeOneNesting: Int => String, nestingStop: Int, testName: String): Unit =
+    def fromToBy(from:Int, until: Int, by: Int) = from until (until min (nestingStop + 1)) by by map timeOneNesting
 
-    type F = V[0.1] * X * X * X + V[2.0] * X * (X + V[0.3] + X * V[1.0]) + V[31.0] * X + X + (V[-1.0] * X)
-    //    type F[Y] = V[0.1] * X[Y] * X[Y] * X[Y] + V[2.0] * X[Y] * (X[Y] + V[0.3] + X[Y] * V[1.0]) + V[31.0] * X[Y] + X[Y] + (V[-1.0] * X[Y])
-
-    assertAndTime(d[F].apply, "forward match type")
-  }
+    val times =
+      fromToBy(nestingStart, 10, 1) appendedAll
+        fromToBy(10, 150, 10) appendedAll
+        fromToBy(150, 300, 25) appendedAll
+        fromToBy(300, 2000, 500)
 
 
-  ignore("forward polynomial macro") {
-    import differentiable.macros.{_, given}
 
-    assertAndTime(
-      d(
-        0.1 * X * X * X + 2 * X * (X + 0.3 + X * 1) + 31 * X + X + -1 * X
-      ).apply,
-      "forward polynomial macro")
-  }
+    print(s"$testName: ${times.mkString("(", ") (", ")")}")
 
-  ignore("reverse cps") {
-    import differentiable.reversemode.cps.{_, given}
+
+  test("reverse cps") {
+    import differentiable.reversemode.cps.{*, given}
 
     def f(x: Dual)(k: Dual => Dual): Dual =
       (0.1 * x) { a1 =>
@@ -109,11 +100,10 @@ class ExecutionTimeComparisonTest extends AnyFunSuite {
       }
     end f
 
-    assertAndTime(differentiate(f), "reverse cps")
   }
 
-  ignore("reverse cps functional") {
-    import differentiable.reversemode.cps.functional.{_, given}
+  test("reverse cps functional") {
+    import differentiable.reversemode.cps.functional.{*, given}
 
     def f(x: Num)(k: Continuation): Adjoints =
       (0.1 * x) { a1 =>
@@ -147,64 +137,32 @@ class ExecutionTimeComparisonTest extends AnyFunSuite {
       }
     end f
 
-    assertAndTime(grad(f), "reverse cps functional")
   }
 
-  ignore("reverse tape") {
-    import differentiable.reversemode.tape.{_, given}
+  test("reverse tape") {
+    import differentiable.reversemode.tape.{*, given}
 
-    def f(x: Dual): Dual =
-      0.1 * x * x * x + 2 * x * (x + 0.3 + x * 1) + 31 * x + x + -1 * x
+    def f(x: => Dual): Dual =
+      0.1*x*x*x+2*x*(x+0.3+x*1)+31*x+x+ -1*x
 
+    print(time(grad(x => f(f(f(x)))), "reverse tape"))
 
-    assertAndTime(grad(f), "reverse tape")
   }
+
 /*
-  ignore("reverse tape functional") {
+  test("reverse tape functional") {
     import differentiable.reversemode.tape.functional.{_, given}
 
     def f(x: Num): Num =
       0.1 * x * x * x + 2 * x * (x + 0.3 + x * 1) + 31 * x + x + -1 * x
 
-    assertAndTime(grad(f), "reverse tape functional")
+    assertAndTime(grad(nestingsRange.foldLeft(f)((l, _) => l andThen f)), "reverse tape functional")
   }
 */
 
-  test("reverse naive monad") {
-    import differentiable.reversemode.monadcps.naive.{_, given}
 
-    def f(x: Dual)(k: Dual => DualMonad): DualMonad =
-      for {
-        a1 <- 0.1 * x
-        a2 <- a1 * x
-        a3 <- a2 * x
-
-        b1 <- x * 1
-        b2 <- b1 + 0.3
-        b3 <- b2 + x
-
-        c1 <- b3 * x
-        c2 <- c1 * 2
-
-        d <- 31 * x
-        e <- -1 * x
-
-        f1 <- d + x
-        f2 <- f1 + e
-
-        g1 <- a3 + c2
-        g2 <- g1 + f2
-
-        cont <- k(g2)
-      } yield cont
-    end f
-
-    assertAndTime(grad(f), "reverse naive monad")
-  }
-
-
-  ignore("reverse monad") {
-    import differentiable.reversemode.monadcps.{_, given}
+  test("reverse monad") {
+    import differentiable.reversemode.monadcps.{*, given}
 
     def f(xM: DualMonad): DualMonad =
       for {
@@ -231,12 +189,11 @@ class ExecutionTimeComparisonTest extends AnyFunSuite {
         g2 <- g1 + f2
       } yield g2
     end f
-
-    assertAndTime(grad(f), "reverse monad")
   }
 
-  ignore("reverse monad functional") {
-    import differentiable.reversemode.monadcps.functional.{_, given}
+
+  test("reverse monad functional") {
+    import differentiable.reversemode.monadcps.functional.{*, given}
 
     def f(xM: DualMonad): DualMonad =
       for {
@@ -263,12 +220,10 @@ class ExecutionTimeComparisonTest extends AnyFunSuite {
         g2 <- g1 + f2
       } yield g2
     end f
-
-    assertAndTime(grad(f), "reverse monad functional")
   }
 
-  ignore("reverse monad functional forless") {
-    import differentiable.reversemode.monadcps.functional.forless.{_, given}
+  test("reverse monad functional forless") {
+    import differentiable.reversemode.monadcps.functional.forless.{*, given}
 
     def f(xM: Monad): Monad =
       forless {
@@ -295,18 +250,16 @@ class ExecutionTimeComparisonTest extends AnyFunSuite {
         (g1 + f2)._yield
       }
     end f
-
-    assertAndTime(grad(f), "reverse monad functional forless")
   }
 
-  test("reverse chad") {
-    import differentiable.reversemode.chad.{_, given}
+  ignore("reverse chad") {
+    import differentiable.reversemode.chad.{*, given}
 
 
     def f(x: Dual[Double, Double]): Dual[Double, Double] =
       0.1 * x * x * x + 2 * x * (x + 0.3 + x * 1) + 31 * x + x + -1 * x
 
-    assertAndTime(x => f(variable(x)).d(1), "reverse chad")
+    time(x => (0 until 4).foldLeft(f)((l, _) => l andThen f)(variable(x)).d(1), "reverse chad")
   }
 
 

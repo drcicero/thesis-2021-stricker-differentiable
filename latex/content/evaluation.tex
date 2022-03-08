@@ -1,0 +1,220 @@
+\chapter{Evaluation}\label{sec:evaluation}
+
+Even though the main focus of this work were the implementations and their design we still want to do a brief runtime performance measurement of our implementations. For this we usually use the following definition for the test function \lstinline{f}:
+\begin{lstlisting}
+def f[A](x: A): A =
+    0.1 * x * x * x + 2 * x * (x + 0.3 + x * 1) + 31 * x + x + -1 * x
+\end{lstlisting}
+Dependent on the tested reverse mode implementation the input and return type of \lstinline{f} differs (e.g. \lstinline{Monad}, \lstinline{Dual}) and we use \lstinline{A} as a placeholder. The implementation of \lstinline{f} can also look different but the implemented mathematical function is always the same. For example think about CPS where we could not just write \lstinline{f} as a one liner like above.
+\lstinline{f} has multiplication, addition and uses \lstinline{x} and constants multiple times and therefore isn't trivial, but it isn't really complex either. Clearly we have to know how our implementations perform on more complex functions which resemble deeply nested functions used in machine learning tasks. To achieve this we reuse the previous function and nest it into itself. Mathematically this is simple function composition
+$f \circ f \circ \dots \circ f$. In Scala we use \lstinline{andThen} to compose functions:
+\begin{lstlisting}
+f andThen f andThen ??? andThen f
+\end{lstlisting}
+We want to compare how the nesting depth impacts runtime performance hence we need a way to dynamically produce a nested function with a specific depth \lstinline{d}:
+\begin{lstlisting}
+(0 until d) foldLeft(f) { (nestingAcc, _) =>
+    nestedAcc andThen f
+}
+\end{lstlisting}
+We create a range (or a list for that matter) with \lstinline{d} items by using \lstinline{(0 until d)}. We fold over it and use \lstinline{f} as the base value. The lambda has two parameters. \lstinline{nestingAcc} accumulates the nested \lstinline{f}s. We ignore the second parameter because it is the svalue of the integer range we called \lstinline{foldLeft} on. The lambda essentially appends another \lstinline{f} to the currently accumulated nested \lstinline{f}s by using \lstinline{andThen}. This is done \lstinline{d} times because the original range has length \lstinline{d}. If \lstinline{d} is 0 then its result is just \lstinline{f}. If \lstinline{d} is 1 then it produces \lstinline{f andThen f} and so forth.
+
+Each measurement is done \lstinline{n = 100000} \todo{add correct n} times and the average is taken to reduce measurement errors. The full measurement takes place like this:
+\begin{itemize}
+    \item
+        For each reverse mode implementation:
+        \begin{itemize}
+            \item
+                For each depth \lstinline{d} ($\geq 0$):
+                \begin{enumerate}
+                    \item Produce the \lstinline{d} times nested function
+                    \item Start timer
+                    \item Call the nested function \lstinline{n} times
+                    \item Stop timer
+                    \item Divide measured time by \lstinline{n} to get the time per function call
+                \end{enumerate}
+        \end{itemize}
+
+\end{itemize}
+
+\newcommand{\equal}{=}
+Let's look at the results for depth $d \leq 10$:
+\begin{center}
+    \begin{tikzpicture}
+        \begin{axis}
+            [
+            title={Reverse mode runtime, depth $d \leq 10$ \newline, average over $n \equal 100000$ (less is better)},
+            legend columns=2,
+            legend style={at={(0.5,-0.30)},anchor=north},
+            width=14cm,
+            ymax=60,
+            ymin=0,
+            xmax=10,
+            xmin=0,
+            ylabel={execution time per function},
+            y filter/.code={\pgfmathdivide{#1}{1000}},
+            y SI prefix=micro,y unit=s,
+            xlabel={nesting depth (d)},
+            name=mainplot,
+            mark options={scale=0.9, solid},
+            ]
+            \addplot[dotted] coordinates {(0, 25) (1, 104) (2, 140) (3, 63) (4, 62) (5, 65) (6, 74) (7, 101) (8, 97) (9, 106) (10, 130) (20, 2071) (30, 3294) (40, 3822) (50, 974) (60, 1129) (70, 1402) (80, 1055) (90, 1107) (100, 1117) (110, 1225) (120, 1498) (130, 1448) (140, 1557) (150, 1833) (175, 1982) (200, 2273) (225, 2714) (250, 2850) (275, 4216) (300, 3398) }; \label{plot:fordardDualNumber}%(800, 9531) (1300, 17403) (1800, 21137)
+
+            \addplot[color=black, mark=*] coordinates {(0, 127) (1, 182) (2, 236) (3, 337) (4, 421) (5, 525) (6, 621) (7, 713) (8, 811) (9, 896) (10, 995) (20, 1980) (30, 3194) (40, 4009) (50, 5233) (60, 6287) (70, 7172) (80, 8238) (90, 9206) (100, 10355) (110, 11458) (120, 12404) (130, 13512)}; \label{plot:reverseCps}
+            \addplot[color=green, mark=square*] coordinates {(0, 837) (1, 1104) (2, 1626) (3, 2178) (4, 2688) (5, 3261) (6, 4147) (7, 4913) (8, 5523) (9, 6150) (10, 6798) (20, 16592) (30, 24526) (40, 32578) (50, 41512) (60, 54376) (70, 64027) (80, 72832) (90, 83045) (100, 92898) (110, 102173) (120, 112057) (130, 123183)}; \label{plot:reverseTape}
+            \addplot[color=red, mark=diamond*] coordinates {(0, 302) (1, 443) (2, 475)}; \label{plot:reverseMonadNaive}
+            \addplot[color=green!50!black, mark=pentagon*] coordinates { (0, 1304) (1, 1355) (2, 1994) (3, 2680) (4, 3335) (5, 3992) (6, 4688) (7, 5405) (8, 6072) (9, 6772) (10, 7451) (20, 18233) (30, 24328) (40, 32747) (50, 40456) (60, 49098) (70, 57643) (80, 66092) (90, 74488) (100, 83264) (110, 92268) (120, 100459) (130, 109531) (140, 118968) (150, 127790) (175, 150371) (200, 174043) (225, 197592) (250, 219889) (275, 242989)}; \label{plot:reverseMonad}
+
+            \addplot[dashed, color=black, mark=*] coordinates {(0, 5761) (1, 10490) (2, 15438) (3, 20547) (4, 25776) (5, 30423) (6, 35612) (7, 41442) (8, 46580) (9, 51892) (10, 57315) (20, 107155) (30, 164178) (40, 226987) (50, 292183) (60, 358546) (70, 424234) (80, 493025) (90, 560397) (100, 628568) (110, 695500) (120, 767562) (130, 838230) (140, 910570)}; \label{plot:reverseCpsFunctional}
+            \addplot[dashed, color=red, mark=diamond*] coordinates {(0, 8761) (1, 11664) (2, 16851) (3, 22341) (4, 27561) (5, 33358) (6, 38219) (7, 43757) (8, 49169) (9, 54171) (10, 58597) (20, 116120) (30, 179116) (40, 245138) (50, 313263) (60, 381072) (70, 450582) (80, 521496) (90, 591609) (100, 663492) (110, 733263) (120, 802838) (130, 876928) (140, 948184) (150, 1020615) (175, 1206258) (200, 1392769) (225, 1585129) (250, 1779184) (275, 1980066) (300, 2179843)}; \label{plot:reverseMonadFunctional}
+%            \addplot[dashed, color=magenta, mark=pentagon*] coordinates {(0, 8119) (1, 10946) (2, 16314) (3, 21532) (4, 26789) (5, 31861) (6, 37317) (7, 42800) (8, 48277) (9, 53688) (10, 59111) (20, 116769) (30, 179452) (40, 244831) (50, 311932) (60, 377102) (70, 446051) (80, 515268) (90, 585362) (100, 654617) (110, 726024) (120, 797104) (130, 867840) (140, 941803) (150, 1013822) (175, 1198722) (200, 1384148) (225, 1575346) (250, 1775918) (275, 1968205) (300, 2166745)}; \label{plot:reverseMonadFunctionalForless}
+            \addplot[dashed, color=brown, mark=square*] coordinates {(0, 3509) (1, 5473) (2, 22372) (3, 180584) (4, 1533683)}; \label{plot:reverseChad}  % (5, 13719477)
+%            \legend{forward dual number, reverse cps,reverse tape,reverse monad naive,reverse monad,reverse cps functional,reverse monad functional,reverse monad functional forless,reverse chad};
+        \end{axis}
+
+        \matrix [
+            draw,
+            matrix of nodes,
+            anchor=north,
+            yshift=-2.5mm,
+            node font=\small,
+            below=of mainplot,
+%            ] at ($ (left plot.below south west)!0.5!(right plot.below south east) $) {
+        ] {
+            Forward mode                    & Reverse mode with mutation        & Reverse Mode without mutation \\
+            \ref{plot:fordardDualNumber} Dual number    & \ref{plot:reverseCps} CPS             & \ref{plot:reverseCpsFunctional} CPS  \\
+                                            & \ref{plot:reverseTape} tape            & \ref{plot:reverseMonadFunctional} Monad \\
+                                            & \ref{plot:reverseMonadNaive} Monad CPS     & \ref{plot:reverseChad} CHAD \\ %\ref{plot:reverseMonadFunctionalForless} Forless monad \\
+                                            & \ref{plot:reverseMonad} Monad \& Tape         &  \\
+        };
+    \end{tikzpicture}
+\end{center}
+Focus on the legend to get a good overview over the many plots in that graph. It is divided into three columns. Forward mode has only one plot ``Dual number'' and is deliberately chosen to be rather unobtrusive. It is mainly included to serve as a kind of baseline to give the reverse mode measurements a context. Dual number is arguably the most straight forward and simple implementation of differentiation there is and because of this fills in that role perfectly. More on forward mode implementations later.
+
+The second column of the legend includes our reverse mode implementations with mutation of \refsec{sec:mutation}. These plots have solid lines. In contrast, all plots of the third column which represent implementations without mutation of \refsec{sec:noMutation} have dashed plot lines. Note that the implementation of ``Monad CPS'' does not allow us to nest functions and therefore we had to manually write a function by hand for each nesting depth. As this is not feasible for deep nesting we could only measure function up until a nesting depth of 2.
+
+The first observation we can quickly make is that implementations using mutation consistently perform better. This matches our intuitive prediction. We also notice that CPS without mutation and monad without mutation (white dashed and red dashed) perform similarly. This makes sense when we recall how similar the implementations of both approaches are. Both implementations essentially used a map as an accumulator for adjoints which is propagated through the whole calculation. Even though the resulting API (for-comprehensions vs. CPS) and the motivation for their implementations are different, in their cores they are alike which manifests as equal runtime performances. Another occurrence of this behaviour can be seen with tape and ``Monad \& Tape''. The original motivation was to improve our original monad implementation by adding a tape. Turns out the finished monad can be interpreted more or less as a wrapper around the tape (instead of the other way around). The monad alters how we interact with our implementation from the outside (defining \lstinline{f} with for-comprehensions) but on the inside it creates (almost) the same tape as our original tape implementation.
+
+After discussing similarities we have to face the big disparity in our measurements. Every implementation seems to have a linear plot while CHAD is the only outlier. Note that linear increase is what we would expect and not exponential growth. Each time we chain our test function into itself the result normally only has to be calculated once and is reused whenever needed. Therefore, the most interesting insight out of this measurement would mostly be the gradient for each implementation in relation to the nesting depth but CHAD performs a magnitude worse for deep nesting. Note that for shallow/no nesting CHAD actually performs best among all implementations without mutation. So at first sight CHAD might have seen like the silver bullet as it seemingly combined purity with comparatively great runtime performance but the main application of reverse mode differentiation is machine learning where we have to expect deeply nested structures for which CHAD evidently isn't suitable. Opposed to our other implementations CHAD can not reuse the result of the nested function at multiple occurrences. Every occurrence of every variable has an implicit trace of the whole preceding calculation which has to be calculated. This is on the one hand the reason for its purity and elegance but on the other hand leads to this massive runtime performance hit.
+
+If we zoom out from this graph, i.e.\ look at even deeper nesting depths, we can clearly see the linearity of each implementation except of CHAD:
+\begin{center}
+    \begin{tikzpicture}
+        \begin{axis}
+            [
+            title={Reverse mode runtime, depth $d \leq 300$ \newline, average over $n \equal 100000$ (less is better)},
+            legend columns=2,
+            legend style={at={(0.5,-0.30)},anchor=north},
+            width=14cm,
+%            ymax=60,
+            ymin=0,
+            xmax=300,
+            xmin=0,
+            ylabel={execution time per function},
+            y filter/.code={\pgfmathdivide{#1}{1000}},
+            y SI prefix=micro,y unit=s,
+            xlabel={nesting depth (d)},
+            name=mainplot,
+            mark options={scale=0.9, solid},
+            ]
+%            \addplot[dotted] coordinates {(0, 1007) (1, 681) (2, 1023) (3, 281) (4, 297) (5, 340) (6, 296) (7, 301) (8, 343) (9, 366) (10, 1196) (20, 2071) (30, 3294) (40, 3822) (50, 974) (60, 1129) (70, 1402) (80, 1055) (90, 1107) (100, 1117) (110, 1225) (120, 1498) (130, 1448) (140, 1557) (150, 1833) (175, 1982) (200, 2273) (225, 2714) (250, 2850) (275, 4216) (300, 3398) }; \label{plot:fordardDualNumber}%(800, 9531) (1300, 17403) (1800, 21137)
+
+            \addplot[color=black, mark=*] coordinates {(0, 3061) (1, 1332) (2, 1137) (3, 1052) (4, 598) (5, 633) (6, 639) (7, 724) (8, 1436) (9, 1606) (10, 1425) (20, 1980) (30, 3194) (40, 4009) (50, 5233) (60, 6287) (70, 7172) (80, 8238) (90, 9206) (100, 10355) (110, 11458) (120, 12404) (130, 13512)}; \label{plot:reverseCps}
+            \addplot[color=green, mark=square*] coordinates {(0, 1007) (1, 1233) (2, 1842) (3, 2392) (4, 2998) (5, 3930) (6, 4396) (7, 5022) (8, 5633) (9, 6263) (10, 6904) (20, 13285) (30, 19662) (40, 26322) (50, 33063) (60, 40271) (70, 47147) (80, 53718) (90, 61052) (100, 68674) (110, 75622) (120, 84048) (130, 90492) (140, 99894) (150, 105231) (175, 125695) (200, 147051) (225, 163878) (250, 187435) (275, 206371)}; \label{plot:reverseTape}
+            \addplot[color=red, mark=diamond*] coordinates {(0, 286) (1, 470) (2, 555)}; \label{plot:reverseMonadNaive}
+            \addplot[color=green!50!black, mark=pentagon*] coordinates {(0, 3857) (1, 2544) (2, 3183) (3, 3717) (4, 3842) (5, 5225) (6, 6483) (7, 6364) (8, 6879) (9, 8056) (10, 8384) (20, 18233) (30, 24328) (40, 32747) (50, 40456) (60, 49098) (70, 57643) (80, 66092) (90, 74488) (100, 83264) (110, 92268) (120, 100459) (130, 109531) (140, 118968) (150, 127790) (175, 150371) (200, 174043) (225, 197592) (250, 219889) (275, 242989)}; \label{plot:reverseMonad}
+
+            \addplot[dashed, color=black, mark=*] coordinates {((0, 10744) (1, 10366) (2, 15241) (3, 20051) (4, 24883) (5, 32139) (6, 34385) (7, 38991) (8, 43490) (9, 48568) (10, 55710) (20, 107155) (30, 164178) (40, 226987) (50, 292183) (60, 358546) (70, 424234) (80, 493025) (90, 560397) (100, 628568) (110, 695500) (120, 767562) (130, 838230) (140, 910570)}; \label{plot:reverseCpsFunctional}
+            \addplot[dashed, color=red, mark=diamond*] coordinates {(0, 8761) (1, 11664) (2, 16851) (3, 22341) (4, 27561) (5, 33358) (6, 38219) (7, 43757) (8, 49169) (9, 54171) (10, 58597) (20, 116120) (30, 179116) (40, 245138) (50, 313263) (60, 381072) (70, 450582) (80, 521496) (90, 591609) (100, 663492) (110, 733263) (120, 802838) (130, 876928) (140, 948184) (150, 1020615) (175, 1206258) (200, 1392769) (225, 1585129) (250, 1779184) (275, 1980066) (300, 2179843)}; \label{plot:reverseMonadFunctional}
+%            \addplot[dashed, color=magenta, mark=pentagon*] coordinates {(0, 8119) (1, 10946) (2, 16314) (3, 21532) (4, 26789) (5, 31861) (6, 37317) (7, 42800) (8, 48277) (9, 53688) (10, 59111) (20, 116769) (30, 179452) (40, 244831) (50, 311932) (60, 377102) (70, 446051) (80, 515268) (90, 585362) (100, 654617) (110, 726024) (120, 797104) (130, 867840) (140, 941803) (150, 1013822) (175, 1198722) (200, 1384148) (225, 1575346) (250, 1775918) (275, 1968205) (300, 2166745)}; \label{plot:reverseMonadFunctionalForless}
+            \addplot[dashed, color=brown, mark=square*] coordinates {(0, 3509) (1, 5473) (2, 22372) (3, 180584) (4, 1533683)}; \label{plot:reverseChad}  % (5, 13719477)
+%            \legend{forward dual number, reverse cps,reverse tape,reverse monad naive,reverse monad,reverse cps functional,reverse monad functional,reverse monad functional forless,reverse chad};
+        \end{axis}
+
+        \matrix [
+            draw,
+            matrix of nodes,
+            anchor=north,
+            yshift=-2.5mm,
+            node font=\small,
+            below=of mainplot,
+%            ] at ($ (left plot.below south west)!0.5!(right plot.below south east) $) {
+        ] {
+            Reverse mode with mutation        & Reverse Mode without mutation \\
+            \ref{plot:reverseCps} CPS             & \ref{plot:reverseCpsFunctional} CPS  \\
+            \ref{plot:reverseTape} tape            & \ref{plot:reverseMonadFunctional} Monad \\
+            \ref{plot:reverseMonadNaive} Monad CPS     & \ref{plot:reverseChad} CHAD \\ %\ref{plot:reverseMonadFunctionalForless} Forless monad \\
+            \ref{plot:reverseMonad} Monad \& Tape         &  \\
+        };
+    \end{tikzpicture}
+\end{center}
+Moreover it can give us another interesting insight about our implementations. Each implementation has a soft limit at which it can't run anymore. Usually the program crashes with a stack overflow or similar exceptions. We can see that CPS with and without mutation similarly and can handle a nesting depth of about 130 to 140. As explained earlier the end product of tape and combined monad with tape are similar which also shows in this metric. Probably because of its exponential growth CHAD only manages to handle a depth of 4. Outlier on the other extreme is monad without mutation. It can handle a depth of about 7000 which is far out of reach of this graph. The reason for this is that this is the only implementation where we don't build a (possibly implicit) stack of calculations which is run later (usually in reverse order). For the monad implementation we instead used a map which saves only the adjoint results and not the calculations themselves.
+
+We can conclude that CHAD isn't a good choice for real machine learning tasks which is particularly unfortunate because it was our purest implementation and had by far the best API among the implementations without mutation (no CPS nor for-comprehensions). While the slowest of the rest, Monad without mutation has the advantage of being extremely robust with respect to function complexity. This could theoretically prove useful for very complex real life tasks but will probably be seldom a deciding factor because a nesting depth of 130 isn't small either. But still, CPS without mutation is at a somewhat bad spot. It doesn't have a nice API, is one of the slowest and hasn't the robustness of monad either. It still has the advantage of not using mutation and is on par performance wise with monad.
+
+If purity isn't of concern then the tape implementation could serve as the perfect sweet spot. It has the best API (even with CHAD), i.e.\ every expression is written like in vanilla Scala, has still a massively better performance than our implementations without mutation and supports very complex functions. Monad \& tape performs similarly but you have to use for-comprehensions to define functions and is therefore not the best decision. Lastly CPS with mutation is the implementation of choice if runtime performance is of essence which is probably a major concern for machine learning tasks. Bad performing differentiations could have a massive impact on the total performance of an machine learning algorithm. Apart of CHAD it crashes at the lowest nesting depth but should not affect any normal machine learning task. The major disadvantage is the API. Understanding the concept in itself, writing and presumably most importantly reading CPS is messy and could lead to bugs by misinterpreting or mistyping.
+
+Even though reverse mode is most important we still want to have a quick look at our measurements of forward mode differentiation. Because dual number macro and match type are based on macros every expression must be available at compile time. Therefore we can not dynamically nest functions for this measurement. Because of technical limitations we also can not manually write functions which are nested deeply. Such a function would be too long and causes a method too long exception. Hence we have to get along with a maximum nesting depth of 2 and only 1 for match type:
+\begin{center}
+    \begin{tikzpicture}
+        \begin{axis}
+            [
+            title={Forward mode runtime, depth $d \leq 2$ \newline, average over $n \equal 1000000$ (less is better)},
+            legend style={at={(0.5,-0.30)},anchor=north},
+            width=10cm,
+%        ymax=70,
+            ymin=0,
+            xmax=2,
+            xmin=0,
+%            ymode=log,
+            ylabel={execution time per function},
+            y filter/.code={\pgfmathdivide{#1}{1000}},
+            y SI prefix=micro,y unit=s,
+            xlabel={nesting depth (d)}
+            ]
+
+            % n = 1000000
+            \addplot[color=red, mark=diamond*] coordinates {(0, 217) (1, 2308) (2, 65391)};
+            \addplot[color=green, mark=square*] coordinates {(0, 46) (1, 1096) (2, 64308)};
+            \addplot[color=black, mark=*] coordinates {(0, 388) (1, 5049)};
+            \legend{dual number,dual number macro,match type};
+        \end{axis}
+    \end{tikzpicture}
+\end{center}
+We can see that dual number and dual number macro perform similarly which is no surprise because essentially the macro builds a object hierarchy at compile time which in turn execute the same operations the normal dual number implementation would do. Even though we technically have everything for our differentiation determined at compile time when using match types, we still have to do the whole calculation at runtime and unfortunatly can't performe better than the other two implementations. In fact the overhead even makes it a little slower.
+
+
+% n = 1000000
+%forward dual number: (0, 25) (1, 104) (2, 140) (3, 63) (4, 62) (5, 65) (6, 74) (7, 101) (8, 97) (9, 106) (10, 130)
+%
+%reverse cps: (0, 127) (1, 182) (2, 236) (3, 337) (4, 421) (5, 525) (6, 621) (7, 713) (8, 811) (9, 896) (10, 995)
+%
+%reverse cps functional: (0, 4452) (1, 9645) (2, 14997) (3, 19983) (4, 25768) (5, 31231) (6, 40698) (7, 48789) (8, 46562) (9, 51939) (10, 57668)
+%
+%reverse tape: (0, 688) (1, 1282) (2, 2096) (3, 2804) (4, 3530) (5, 4619) (6, 5042) (7, 7885) (8, 7507) (9, 9232) (10, 9580)
+%
+%reverse monad: (0, 1399) (1, 2424) (2, 2981) (3, 4043) (4, 5844) (5, 6281) (6, 6999) (7, 7617) (8, 7500) (9, 9603) (10, 11712)
+
+
+% n = 100000
+% forward dual number: (0, 196) (1, 107) (2, 59) (3, 80) (4, 100) (5, 241) (6, 514) (7, 440) (8, 137) (9, 170) (10, 119) (20, 237) (30, 347) (40, 425) (50, 641) (60, 662) (70, 802) (80, 1038) (90, 1041) (100, 1113) (110, 1330) (120, 1328) (130, 1435) (140, 1675) (150, 1625) (175, 1905) (200, 2180) (225, 2469) (250, 2743) (275, 2985) (300, 3278) (800, 8841) (1300, 14570) (1800, 20642)
+%
+%reverse cps: (0, 456) (1, 272) (2, 377) (3, 327) (4, 413) (5, 535) (6, 616) (7, 722) (8, 806) (9, 923) (10, 996) (20, 1994) (30, 2981) (40, 3965) (50, 5018) (60, 6016) (70, 7035) (80, 8085) (90, 9141) (100, 10261) (110, 11361) (120, 12523) (130, 13493)
+%
+%reverse cps functional: (0, 5172) (1, 9629) (2, 14768) (3, 19696) (4, 24918) (5, 29710) (6, 34976) (7, 39378) (8, 44649) (9, 49258) (10, 54982) (20, 108194) (30, 166898) (40, 227449) (50, 293774) (60, 357306) (70, 420572) (80, 488553) (90, 556232) (100, 623918) (110, 682818) (120, 750161) (130, 825610) (140, 898511)
+%
+%reverse tape: (0, 894) (1, 1426) (2, 1956) (3, 2598) (4, 3236) (5, 3899) (6, 4912) (7, 5813) (8, 6569) (9, 7353) (10, 8059) (20, 15637) (30, 23442) (40, 31712) (50, 39124) (60, 47293) (70, 55580) (80, 64703) (90, 72875) (100, 82732) (110, 90019) (120, 99885) (130, 112942)
+%
+%reverse monad: (0, 1424) (1, 1730) (2, 2344) (3, 3144) (4, 4101) (5, 4664) (6, 5377) (7, 6124) (8, 6944) (9, 7728) (10, 8439) (20, 16299) (30, 24134) (40, 32487) (50, 40860) (60, 49039) (70, 57751) (80, 66569) (90, 75291) (100, 84634) (110, 92538) (120, 101302) (130, 109351) (140, 119378) (150, 127672) (175, 151325) (200, 173873) (225, 195698) (250, 223567) (275, 243136)
+
+
+
+
+
+% n = 1000000
+%forward dual number: (0, 27) (1, 86) (2, 134) (3, 63) (4, 58) (5, 64) (6, 73) (7, 108) (8, 97) (9, 107) (10, 125) (20, 236) (30, 342) (40, 447) (50, 558) (60, 671) (70, 800) (80, 916) (90, 1034) (100, 1176) (110, 1249) (120, 1360) (130, 1480) (140, 1587) (150, 1699) (175, 1986) (200, 2297) (225, 2533) (250, 2823) (275, 3086) (300, 3405) (800, 9250) (1300, 15084) (1800, 23664)
+%
+%reverse cps: (0, 112) (1, 155) (2, 243) (3, 347) (4, 423) (5, 530) (6, 628) (7, 725) (8, 810) (9, 916) (10, 1010) (20, 2017) (30, 3090) (40, 5995) (50, 6208) (60, 8053) (70, 7189) (80, 8271) (90, 9315) (100, 11600) (110, 15213) (120, 18370) (130, 15506)
+%
+%reverse cps functional: (0, 6094) (1, 13829) (2, 19482) (3, 26835) (4, 32264) (5, 39782) (6, 36910) (7, 42157) (8, 53621) (9, 70963) (10, 72562) (20, 140247) (30, 221122) (40, 288821) (50, 382258) (60, 471004) (70, 508279) (80, 509598) (90, 579502) (100, 710008) (110, 872700) (120, 997548) (130, 1102964) (140, 1222507)
+%reverse tape: (0, 641) (1, 1301) (2, 1897) (3, 2546) (4, 3156) (5, 3813) (6, 4334) (7, 4970) (8, 7647) (9, 9515) (10, 6986) (20, 13598) (30, 31142) (40, 29573) (50, 43920) (60, 43027) (70, 47562) (80, 54991) (90, 80893) (100, 86758) (110, 103761) (120, 90080) (130, 120444)

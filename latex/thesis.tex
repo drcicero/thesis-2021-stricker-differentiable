@@ -44,6 +44,8 @@
 \usepackage{scrhack} % to prevent an error when using a self defined listing command
 % math expressions in 
 \usepackage{xcolor}% http://ctan.org/pkg/listings
+%    \pagecolor[rgb]{0,0,0}
+%    \color[rgb]{1,1,1}
 \usepackage[framemethod=TikZ]{mdframed}% http://ctan.org/pkg/mdframed
 \usepackage{etoolbox}{% http://ctan.org/pkg/etoolbox
 	\mdfdefinestyle{listingstyle}{%
@@ -60,8 +62,18 @@
 
 \usepackage{tikz}
 	\usetikzlibrary{shapes.multipart}
+    \usetikzlibrary{
+        calc,
+        matrix,
+        positioning,
+        plotmarks,
+    }
 \usepackage{tikz-cd}
 	\usetikzlibrary{babel} % to fix error with "" in arrow labels
+\usepackage{pgfplots}
+    \usepgfplotslibrary{units}
+%    \pgfplotsset{compat=1.3}
+    %\pgfplotsset{width=10cm,compat=1.9} % for compatibility issues and sets size
 
 \newcommand{\lstscala}[3]{\lstinputlisting[firstline=#2, lastline=#3]{listings/#1}}
 \newcommand{\lstscalacaption}[5]{\lstinputlisting[firstline=#2, lastline=#3, label={#5}, caption={#4}]{listings/#1}}
@@ -101,7 +113,7 @@
 
 \newcommand{\reflst}[1]{\hyperref[#1]{listing} \ref{#1}} % reference listings
 \newcommand{\reffig}[1]{\hyperref[#1]{figure} \ref{#1}} % reference figures
-\newcommand{\refsec}[1]{\hyperref[#1]{section} \ref{#1} (\nameref{#1})} % reference sections
+\newcommand{\refsec}[1]{\hyperref[#1]{section} \ref{#1}} % reference sections
 
 
 
@@ -153,6 +165,8 @@
 
 \input{content/introduction}
 \input{content/implementation/implementation}
+\input{content/evaluation.tex}
+\input{content/conclusion.tex}
 
 %\input{content/tocEstimate.tex}
 

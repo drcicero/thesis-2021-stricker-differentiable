@@ -57,6 +57,7 @@ given Conversion[Double, Dual] = Dual(_, 0)
 given Conversion[Int, Dual] = Dual(_, 0)
 
 def grad(f: DualMonad => DualMonad)(x: Double): Double =
+  tape = _ => {}
   val xDualMonad = wrap(Dual(x, 0))
   f(xDualMonad).parent.adjoint = 1
   tape(())

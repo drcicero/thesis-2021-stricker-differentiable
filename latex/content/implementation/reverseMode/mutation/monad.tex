@@ -165,6 +165,7 @@ end Dual
 The biggest and most important change comes in the signature of \lstinline{differentiate}. The expected function \lstinline{f} uses no continuation which is exactly what we wanted:
 \begin{lstlisting}
 def differentiate(f: DualMonad => DualMonad)(x: Double): Double =
+    tape = _ => ()
     val xDualMonad = wrap(Dual(x, 0))
     f(xDualMonad).parent.adjoint = 1
     tape(())

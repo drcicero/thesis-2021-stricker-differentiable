@@ -10,3 +10,8 @@
 /target/
 
 .directory
+
+/latex/.idea/
+/latex/out/
+/latex/latex.iml
+/latex/thesis.pdf

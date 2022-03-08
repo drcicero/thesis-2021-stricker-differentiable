@@ -1,5 +1,8 @@
 \chapter{Introduction}
 
+\section{Abstract}
+Reverse mode differentiation builds the base for every machine learning algorithm. However, reverse mode differentiation is not trivial and therefore many ways to implement it have been and are still developed. Every implementation tries to be the best in some metric like for example easiness, speed or purity. Our main goal of this work is to show the differences and arguably more importantly the similarities between multiple implementations in written code, client API and runtime performance. For this we design our own implementations from scratch but also implement ideas developed by others and try to expand them. The comparison of code and API is done by incrementally developing each implementation by altering or referencing previous implementations to demonstrate differences/similarities on the way.
+
 \section{Motivation}
 Machine learning (ML) is a big research area in computer science and especially here at TU Darmstadt. Many groups in the computer science departments do research on ML either directly or indirectly by using it to achieve some other goal/knowledge (e.g. for image recognition or natural language processing). Research on computer languages concerning problems specific to ML could facilitate the implementation of ML applications for many use cases. Because of this the Software Technology Group at TU Darmstadt also wants to focus more on ML. Gradient descent and therefore differentiable programming builds the base of ML which makes it the perfect starting point for a newly found focus on ML. Having an overview of possible implementations would make it possible to decide which implementation is best suited to design a ML library, algorithm or even (domain specific) language around. 
 
@@ -12,11 +15,10 @@ The main focus of this work is definitely \refsec{sec:reverseMode} because rever
 
 For the more puristic oriented in \refsec{sec:noMutation} we translate the CPS and monad implementations in \refsec{sec:functionalCps} and \refsec{sec:functionalMonad} respectively into a design which does use an accumulator to map expressions to their adjoints instead of mutation. The last implementation \refsec{sec:chad} is fully functional and doesn't even need a unique ID per expression which consequently means it only needs value equality to function. On top of that it is easily comprehensible because it comes without much overhead or complicated abstractions.
 
-\todocite{section}
-In the end we will compare the runtime performance of each implementation.
+In the end we will compare the runtime performance of each implementation in \refsec{sec:evaluation}.
 
 \section{External Work}
-In conclusion we want to give a quick overview over which sections are based on which external work. \emph{CHAD: Combinatory Homomorphic Automatic Differentiation} \cite{chad} is the base for \refsec{sec:chad}. \emph{Demystifying Differentiable Programming: Shift/Reset the Penultimate Backpropagator} \cite{lantern} has a running example of a function which is differentiated. This function is also used throughout our work as a running example. Furthermore we based \refsec{sec:forwardDualNumbers}, \refsec{sec:cps}, \refsec{sec:tape} and \refsec{sec:functionalCps} directly on their work. Other reverse mode sections, namely \refsec{sec:monadCPS}, \refsec{sec:monadAndTape} and \refsec{sec:functionalMonad}, are mainly based on our own work but do refer to or build on concepts introduced in the previously mentioned sections and therefore are indirectly based on the work of Fei Wang et al. 
+In conclusion, we want to give a quick overview over which sections are based on which external work. \emph{CHAD: Combinatory Homomorphic Automatic Differentiation} \cite{chad} is the base for \refsec{sec:chad}. \emph{Demystifying Differentiable Programming: Shift/Reset the Penultimate Backpropagator} \cite{lantern} has a running example of a function which is differentiated. This function is also used throughout our work as a running example. Furthermore, we based \refsec{sec:forwardDualNumbers}, \refsec{sec:cps}, \refsec{sec:tape} and \refsec{sec:functionalCps} directly on their work. Other reverse mode sections, namely \refsec{sec:monadCPS}, \refsec{sec:monadAndTape} and \refsec{sec:functionalMonad}, are mainly based on our own work but do refer to or build on concepts introduced in the previously mentioned sections and therefore are indirectly based on the work of Fei Wang et al.
 
 
 
