@@ -11,24 +11,64 @@ In contrast to forward mode differentiation which benefits highly from our intui
 }
 \yExampleDiff
 For our purpose each expression is either an operation acting on subexpressions or a value (constant or variable). This can be conveniently visualized as an expression tree with operations as nodes and values as leaves:
-\begin{center}
+
+\begin{minipage}[c]{0.5\textwidth}
+    \begin{alignat*}{2}
+        & =        &  & w_5 \\
+        \\
+        & = w_3    &  & + w_4       \\
+        \\
+        & = w_1w_2 &  & + \sin{w_1} \\
+        \\
+        y & = x_1x_2 &  & + \sin{x_1} \\
+    \end{alignat*}
+\end{minipage}%%
+\begin{minipage}[c]{0.5\textwidth}
     % https://tikzcd.yichuanshen.de/#N4Igdg9gJgpgziAXAbVABwnAlgFyxMJZABgBoAmAXVJADcBDAGwFcYkQAdDuZgIzhz0AxgGtgAdwD6ARgAEXLrIAeMgL4hVpdJlz5CKchWp0mrdlx79BoiZPLyFyu+s3bseAkWmlpxhizZETm4+AWExKQBmB0UAKhctEAx3PSJInz9TQODLMJspABYYjgdsMAS3XU8DUmJMgPMQq3DbAFZi2QBqCqSdD31kdKoafzMgi1DrCJkOlWkXYxgoAHN4IlAAMwAnCABbJEMQHAgkbxAACxh6KHZIMDYaQSxGW4I2VxBtvYPHk8QyC5XG5BO4PEC8GBgYEAuDnLAbHBIYgfL77RAFX4-QHXV73DSJVFIDFHP7pbHA8BvfGbHZosnHJCtGiXHEgqmqSiqIA
+%    \begin{tikzcd}
+%        &                                                             & \substack{w_5 \\ +} \arrow[ld, no head] \arrow[rd, no head] &                                           \\
+%        & \substack{w_3 \\ *} \arrow[rd, no head] \arrow[ld, no head] &                                                             & \substack{w_4 \\ \sin} \arrow[d, no head] \\
+%    \substack{w_1 \\ x_1} &                                                             & \substack{w_2 \\ x_2}                                       & \substack{w_1 \\ x_1}
+%    \end{tikzcd}
+
+
+    % https://tikzcd.yichuanshen.de/#N4Igdg9gJgpgziAXAbVABwnAlgFyxMJZABgBoAmAXVJADcBDAGwFcYkQB3AfQEYQBfUuky58hFOQrU6TVu27kBQkBmx4CRHqR7SGLNohAAdI3GYAjODnoBjANbBuAZgAEJky4BU-JcLViiJ21dWQNjUwsrWwduABY3dwTsMB9BP1ENCVJiEP12EzNLa3tHLgBWBI8AalTlVQzxZCCqGj05Q24+NJURdUagp1z2kAAPXl8e-0zkSUHW0PYxxW76vqIyOZk8wzGu6RgoAHN4IlAAMwAnCABbJEkQHAgkLRAACxh6KHZIMDYaaywjG+BDY3UuNzu-yeiDIbw+X0MPz+IHMMDACNhcFeWDOOCQxDBV1uiFiUMhcM+wN+E3BxNJD2hQQpCPAIJpRKQTMeSDKNHelMRbMJEMQvIZSAAbHz4VTQcpac8yYgAOzSgWs6nC4mw7mIAAcapZSIElH4QA
     \begin{tikzcd}
         &                                                             & \substack{w_5 \\ +} \arrow[ld, no head] \arrow[rd, no head] &                                           \\
         & \substack{w_3 \\ *} \arrow[rd, no head] \arrow[ld, no head] &                                                             & \substack{w_4 \\ \sin} \arrow[d, no head] \\
-    \substack{w_1 \\ x_1} &                                                             & \substack{w_2 \\ x_2}                                       & \substack{w_1 \\ x_1}                    
+        w_1 \arrow[d, no head] &                                                             & w_2 \arrow[d, no head]                                      & w_1 \arrow[d, no head]                    \\
+        x_1                    &                                                             & x_2                                                         & x_1
     \end{tikzcd}
-\end{center}
-We gave every possible subexpression a name $w_i$. Note that the outmost expression has the largest index and the innermost expressions have the smallest indices. Order of indices at the same level do not matter.
-
-In forward mode we calculate the derivative
-\[ \dot w_i \coloneqq \diff{w_i}{x} \]
-from small $i$ to largest. For example if we know $\dot w_1$ and $\dot w_2$ we can (by using the product rule) calculate
-\[ \dot w_3 = w_1 \dot w_2 + \dot w_1 w_2. \]
-With that (and $\dot w_4$) we can then find $\dot w_5$. Note that as stated above we need to know the initial value of $x_1$ and $x_2$. With one variable we would set it to $\dot x = \diff{x}{x} = 1$ and calculate our result. With two variables we have to do two passes through the whole calculation, one with $\dot x_1 = 1, \dot x_2 = 0$ and one with $\dot x_1 = 0, \dot x_2 = 1$. This is the whole motivation to do reverse mode differentiation because it only needs one pass to calculate the same result. In fact for a function $f: \R^n \to \R^m$ forward mode has to do $n$ passes and reverse mode has to do $m$ passes. Usually in machine learning tasks you have functions with $n >\! \!> m$.
+\end{minipage}
+We gave every possible subexpression a name $w_i$:
+\begin{align*}
+    w_1 &\coloneqq x_1 \\
+    w_2 &\coloneqq x_2 \\
+    w_3 &\coloneqq w_1 w_2 \\
+    w_4 &\coloneqq \sin{w_1} \\
+    w_5 &\coloneqq w_3 + w_4
+\end{align*}
+Note that the outermost expression has the largest index and the innermost expressions have the smallest indices. Order of indices at the same level do not matter. Note that each occurrence of a $x_i$ gets the same name as can be seen with $x_1$ which both got the name $w_1$. This gets important later.
 
 \newcommand{\overw}[1]{\overline{w}_{#1}}
 \newcommand{\diffyw}[1]{\diff{y}{w_{#1}}}
+Forward and reverse mode differentiation are built on two different main formulas of concern:
+\\
+\begin{minipage}[c]{0.5\textwidth}
+    \begin{equation*}
+        \text{Derivative:}\ \dot w_i \coloneqq \diff{w_i}{x}
+    \end{equation*}
+\end{minipage}%
+\begin{minipage}[c]{0.5\textwidth}
+    \begin{equation*}
+       \text{Adjoint:}\ \overw{i} \coloneqq \diffyw{i}
+    \end{equation*}
+\end{minipage}
+\\ \\
+In forward mode we compute the derivative from small $i$ to largest, i.e.\ from the leaves to the root of the tree. For example if $\dot w_1 = \dot x_1$ and $\dot w_2 = \dot x_2$ are given we can calculate (by using the product rule)
+\[ \dot w_3 = w_1 \dot w_2 + \dot w_1 w_2. \]
+With that (and $\dot w_4$) we can then find $\dot w_5$. Note that as stated above we need to know the initial value of $\dot x_1$ and $\dot x_2$. If we had one single variable we would set it to $\dot x = \diff{x}{x} = 1$ and calculate our result. But as we have two variables we have to do two passes through the whole calculation, one with $\dot x_1 = 1, \dot x_2 = 0$ and one with $\dot x_1 = 0, \dot x_2 = 1$. Reverse mode does not have to do this. It only has to do one pass to calculate the same result which is the whole motivation to do reverse mode instead of forward mode. In fact for a function $f: \R^n \to \R^m$ forward mode has to do $n$ passes and reverse mode has to do $m$ passes through the whole function. Usually in machine learning tasks you have functions with $n >\! \!> m$ which are also very complex. You certainly want to do as least passes as possible.
+
 For the following parts we orient ourselves by the reverse mode example also from Wikipedia \cite{reverseAccumulationWiki}, again using similar notation and terminology. For reverse mode we have to shift our focus from $\dot w_i$ to another main expression of concern, namely
 \[ \overw{i} \coloneqq \diffyw{i} \]
 also called the adjoint of $w_i$. Instead of calculating the derivative of a subexpression $w_i$ with respect to $x$ it expresses the derivative of $y$ with respect to a particular subexpression $w_i$ of $y$. Why this expression concerns us now gets clear after looking at the corresponding usage of the chain rule which both differentiation styles are based on. A quick reminder on the definition of the chain rule:

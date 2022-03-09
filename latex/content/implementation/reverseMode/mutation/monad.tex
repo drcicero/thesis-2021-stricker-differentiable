@@ -74,11 +74,11 @@ case class Dual(x: Double, var adjoint: Double):
     def +(r: Dual): DualMonad = ???
 end Dual
 \end{lstlisting}
-First notice that we don't implement \lstinline{DualMonad} at top level and in fact only implement it ad hoc when calling an operation on \lstinline{Dual}s. We use this to override \lstinline{flatMap} with the main operation logic which was found directly as part of \lstinline{*} (or \lstinline{+}) in previous reverse mode implementations. When inspecting \lstinline{flatMap} further we realize that it is almost equivalent to the code of \lstinline{*} from the CPS implementation in \reflst{lst:cpsDual}. We calculate the parent result (line 6), call the continuation k to build the ``call stack'' (line 7) and then use the reverse pass to update the adjoints of \lstinline{thisDual} and \lstinline{thatDual} using the adjoint of the parent expression (lines 8-9). Note that we appended -\lstinline{Dual} to the instance name in line 2 to prevent a name clash with identifier \lstinline{this} when we are inside the ad hoc definition of \lstinline{DualMonad}. The only but important difference is that we eventually return the \lstinline{DualMonad} we got from the continuation in line 7. Returning a \lstinline{DualMonad} allows us to chain multiple \lstinline{flatMap} calls together which in turn means chaining multiple operations just like with normal CPS.
+First notice that we don't implement \lstinline{DualMonad} at top level and in fact only implement it ad hoc when calling an operation on \lstinline{Dual}s. We use this to override \lstinline{flatMap} with the main operation logic which was found directly as part of \lstinline{*} (or \lstinline{+}) in previous reverse mode implementations. Because multiplication and addition have different logic we implement them ad hoc. When inspecting \lstinline{flatMap} further we realize that it is almost equivalent to the code of \lstinline{*} from the CPS implementation in \reflst{lst:cpsDual}. We calculate the parent result (line 6), call the continuation k to build the ``call stack'' (line 7) and then use the reverse pass to update the adjoints of \lstinline{thisDual} and \lstinline{thatDual} using the adjoint of the parent expression (lines 8-9). Note that we appended -\lstinline{Dual} to the instance name in line 2 to prevent a name clash with identifier \lstinline{this} when we are inside the ad hoc definition of \lstinline{DualMonad}. The only but important difference is that we eventually return the \lstinline{DualMonad} we got from the continuation in line 7. Returning a \lstinline{DualMonad} allows us to chain multiple \lstinline{flatMap} calls together which in turn means chaining multiple operations just like with normal CPS.
 
 The next method we override is \lstinline{map} (line 12). The important signature difference to \lstinline{flatMap} is that it gets a function which returns a \lstinline{Dual} directly instead of a wrapped \lstinline{DualMonad}. Usually this is used to allow a last operation directly on \lstinline{Dual} before ending the for-comprehension. In our case this is not needed because each of our operations on \lstinline{Dual} return \lstinline{DualMonad} and not \lstinline{Dual}. Because of this the only \lstinline{k} which can be passed is a function which returns its argument or another \lstinline{Dual} captured by its closure. Essentially our job is to wrap the result of \lstinline{k} into a monad without changing the semantics. Naively one would try to implement \lstinline{DualMonad} ad hoc as we did with \lstinline{flatMap}. One unfortunately quickly realizes that we would have to implement another \lstinline{DualMonad} in the nested \lstinline{map} which leads us into an infinite loop of implementations. A solution for this is to apply a trivial identity function like multiplying with 1 to wrap a \lstinline{Dual} into a \lstinline{DualMonad} (line 13). With the ability to wrap a \lstinline{Dual} we can directly use the already implemented \lstinline{flatMap}. We just pass \lstinline{k} to it but wrap \lstinline{k}'s result into a \lstinline{DualMonad} to conform to \lstinline{flatMap}'s signature.
 
-We successfully implemented a Monad and now just need a \lstinline{differentiate} function which sets the adjoint of the top expression to 1 just like in previous implementations. Additionally it has to wrap the top expression into a \lstinline{DualMonad} manually by again using a no-op multiplication (line 8):
+We successfully implemented a Monad and now just need a \lstinline{differentiate} function which sets the adjoint of the top expression to 1 just like in previous implementations. Additionally it has to wrap the top expression into a \lstinline{DualMonad} manually by again using a no-op multiplication (line 11):
 \begin{lstlisting}
 given Conversion[Double, Dual] = Dual(_, 0)
 given Conversion[Int, Dual] = Dual(_, 0)
@@ -95,8 +95,8 @@ def differentiate(
     xDual.adjoint
 end differentiate
 \end{lstlisting}
-
-Finally we can use a for-comprehension to define \lstinline{f} to ultimately let the compiler rewrite our code into a CPS-like structure which was our goal:
+Note that the expected function \lstinline{f} again has a second argument, the continuation (\lstinline{Dual => DualMonad}) which now returns a \lstinline{DualMonad}.
+Finally, we can use a for-comprehension to define \lstinline{f} to ultimately let the compiler rewrite our code into a CPS-like structure which was our goal:
 \begin{lstlisting}
 def f(x: Dual)(k: Dual => DualMonad): DualMonad =
     for
@@ -116,12 +116,12 @@ val derivative = differentiate(f, 3)
 
 Using for-comprehensions made the inside of a function more readable but when defining \lstinline{f} we still needed a continuation \lstinline{k} as its second parameter. This is not only ugly but makes it very hard to compose multiple functions. Instead we want a simple way to define two functions \lstinline{f} and \lstinline{g} without seeing continuations at all and make chaining them as easy as writing \lstinline{f andThen g} as we are used to in Scala. We try to solve this by coming back to our tape based approach and combining it with our monad based one. 
 
-Firstly we need our tape where we save all adjoint updates which have to happen in reverse order. This is exactly same to our first tape based implementation:
+At first, we need our tape where we save all adjoint updates which have to happen in reverse order. This is exactly same to our first tape based implementation:
 \begin{lstlisting}
 var tape: Unit => Unit = _ => {}
 \end{lstlisting}
 
-Now we get back to monads. Previously we implemented \lstinline{DualMonad} ad hoc to overcome different requirements of for example multiplication and addition. Those differences can be abstracted over which leads to a much cleaner and more reusable design. Essentially what we need to abstract over is the result of an ``parent'' calculation and how to update the adjoints of the child expressions using the parent adjoint. Those are both realized as members of \lstinline{DualMonad}:
+Now we get back to monads. Previously we implemented \lstinline{DualMonad} ad hoc to overcome the different requirements of multiplication and addition. Those differences can be abstracted over which leads to a much cleaner and more reusable design. Essentially what we need to abstract over is the result of an parent calculation and how to update the adjoints of the child expressions using the parent adjoint. Those are both realized as members of \lstinline{DualMonad} and are called \lstinline{parent} and \lstinline{adjointsUpdater} respectively (line 1):
 \begin{lstlisting}
 class DualMonad(val parent: Dual, val adjointsUpdater: Dual => Unit):
     def flatMap(k: Dual => DualMonad): DualMonad =
@@ -134,7 +134,7 @@ end DualMonad
 
 def wrap(dual: Dual): DualMonad = DualMonad(dual, identity)
 \end{lstlisting}
-\lstinline{flatMap} prepends the adjoint update operation to the tape which is exactly what we did for our first tape implementation and then calls the continuation. \lstinline{map} is very similar to our first monad approach as it also just uses \lstinline{flatMap} after wrapping the result of \lstinline{k}. The difference is that instead of doing an no-op operation on \lstinline{Dual} we wrap it manually by passing a no-op as the \lstinline{adjointUpdater}.
+\lstinline{flatMap} prepends the adjoint update operation to the tape (line 3) which is exactly what we did for our first tape implementation and then calls the continuation (line 4). \lstinline{map} is very similar to our first monad approach as it also just uses \lstinline{flatMap} after wrapping the result of \lstinline{k} (line 7). The difference is that instead of doing an no-op operation on \lstinline{Dual} we wrap it manually by passing a no-op identity function as the \lstinline{adjointUpdater} in the \lstinline{wrap} function (line 10).
 
 We have already done the hardest task and now only have to glue the pieces together:
 \begin{lstlisting}
@@ -160,9 +160,9 @@ case class Dual(x: Double, var adjoint: Double):
     def +(r: Dual): DualMonad = ???
 end Dual
 \end{lstlisting}
-\lstinline{addPartialAdjoint} is equal to previous implementations. We pass the normal result and as usual how to update the adjoints of \lstinline{this} and \lstinline{that} to the constructor of \lstinline{DualMonad}.
+\lstinline{addPartialAdjoint} (line 3) is equal to previous implementations. We pass the normal result (line 13) and as usual how to update the adjoints of \lstinline{this} and \lstinline{that} to the constructor of \lstinline{DualMonad} (lines 14 to 16).
 
-The biggest and most important change comes in the signature of \lstinline{differentiate}. The expected function \lstinline{f} uses no continuation which is exactly what we wanted:
+The biggest and most important change comes in the signature of \lstinline{differentiate}. The expected function \lstinline{f} uses no continuation and just expects and returns a \lstinline{DualMonad} which is exactly what we wanted:
 \begin{lstlisting}
 def differentiate(f: DualMonad => DualMonad)(x: Double): Double =
     tape = _ => ()
@@ -171,9 +171,9 @@ def differentiate(f: DualMonad => DualMonad)(x: Double): Double =
     tape(())
     xDualMonad.parent.adjoint
 \end{lstlisting}
-The implementation of it on the other hand is nothing special. After wrapping a \lstinline{Double} into a \lstinline{Dual} and then into a \lstinline{DualMonad} (line 2) we have to call \lstinline{f} with it to do the forward pass and fill the tape (line 3). After setting the adjoint of the top expression (line 3) we can execute the tape (and start the reverse pass) (line 4) which sets the adjoint of our argument.
+The implementation of it on the other hand is nothing special. Again, we have to remember to reset the tape (line 2). After wrapping a \lstinline{Double} into a \lstinline{Dual} and then into a \lstinline{DualMonad} (line 3) we have to call \lstinline{f} with it to do the forward pass and fill the tape (line 4). After setting the adjoint of the top expression (also line 4) we can execute the tape (and start the reverse pass) (line 5) which sets the adjoint of our argument to \lstinline{f}.
 
-Because the expected function gets a \lstinline{DualMonad} and also returns one we can now easily chain two functions and still use for-comprehensions:
+Because the expected function gets a \lstinline{DualMonad} and also returns one we can now easily chain two functions using \lstinline{andThen} (line 18) and still use for-comprehensions:
 \begin{lstlisting}
 def f(xM: DualMonad): DualMonad =
     for
