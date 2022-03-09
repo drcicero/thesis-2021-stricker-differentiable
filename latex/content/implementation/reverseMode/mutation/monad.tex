@@ -114,7 +114,7 @@ val derivative = differentiate(f, 3)
 
 \subsection{Combined Monad and Tape} \label{sec:monadAndTape}
 
-Using for-comprehensions made the inside of a function more readable but when defining \lstinline{f} we still needed a continuation \lstinline{k} as its second parameter. This is not only ugly but makes it very hard to compose multiple functions. Instead we want a simple way to define two functions \lstinline{f} and \lstinline{g} without seeing continuations at all and make chaining them as easy as writing \lstinline{f andThen g} as we are used to in Scala. We try to solve this by coming back to our tape based approach and combining it with our monad based one. 
+Using for-comprehensions made the inside of a function more readable but when defining \lstinline{f} we still needed a continuation \lstinline{k} as its second parameter. This is not only ugly but makes it very hard to compose multiple functions. Instead, we want a simple way to define two functions \lstinline{f} and \lstinline{g} without seeing continuations at all and make chaining them as easy as writing \lstinline{f andThen g} as we are used to in Scala. We try to solve this by coming back to our tape based approach and combining it with our monad based one.
 
 At first, we need our tape where we save all adjoint updates which have to happen in reverse order. This is exactly same to our first tape based implementation:
 \begin{lstlisting}
@@ -122,7 +122,7 @@ var tape: Unit => Unit = _ => {}
 \end{lstlisting}
 
 Now we get back to monads. Previously we implemented \lstinline{DualMonad} ad hoc to overcome the different requirements of multiplication and addition. Those differences can be abstracted over which leads to a much cleaner and more reusable design. Essentially what we need to abstract over is the result of an parent calculation and how to update the adjoints of the child expressions using the parent adjoint. Those are both realized as members of \lstinline{DualMonad} and are called \lstinline{parent} and \lstinline{adjointsUpdater} respectively (line 1):
-\begin{lstlisting}
+\begin{lstlisting}[caption={Monad using tape}, label={lst:monadTape}]
 class DualMonad(val parent: Dual, val adjointsUpdater: Dual => Unit):
     def flatMap(k: Dual => DualMonad): DualMonad =
         tape = ((_: Unit) => adjointsUpdater(parent)) andThen tape

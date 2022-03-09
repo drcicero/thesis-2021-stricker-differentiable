@@ -5,7 +5,7 @@ Next we want to take a look at our approach where we combined monad and tape and
 type Adjoints = Map[Num, Double]
 \end{lstlisting}
 
-A completely new obstacle is the tape itself which is also mutable. To convert it into something immutable let's first reflect which purpose it served. Principally it is a recursively accumulated list of operations which have to be executed later. Nothing speaks against passing a growing function (instead of a map for example) as an accumulator of our recursive pass through a calculation. In our case these operations always specifically acted with and on adjoints of some \lstinline{Dual}. Alas, \lstinline{Dual} has no \lstinline{adjoint} member anymore (and therefore was renamed into \lstinline{Num}). Its replacement is \lstinline{Adjoints} which keeps track of adjoints of every \lstinline{Num}. Consequently our ``tape accumulator'' has to act on \lstinline{Adjoints}. More specifically it has to be of type \lstinline{Adjoints => Adjoints} because you update the current (passed) adjoints by adding each child's partial adjoint and returning a new updated instance of \lstinline{Adjoints}. Previously every \lstinline{DualMonad} had a member \lstinline{adjointsUpdater: Dual => Unit} which was prepended to the tape to ultimately collect every \lstinline{adjointsUpdater}. We could instead use the member \lstinline{adjointsUpdater} itself as an accumulator by changing its type. Previously \lstinline{adjointsUpdater} just signified how to update the adjoints of one subexpression. Only on the tape they were chained. Now we directly chain each \lstinline{adjointsUpdater} recursively on the fly and pass the chained \lstinline{adjointsUpdater} to the outer \lstinline{DualMonad}. Thus we are now skipping the tape entirely by moving it into an accumulator:
+A completely new obstacle is the tape itself which is also mutable. To convert it into something immutable let's first reflect which purpose it served. Principally it is a recursively accumulated list of operations which have to be executed later. Nothing speaks against passing a growing function (instead of a map for example) as an accumulator of our recursive pass through a calculation. In our case these operations always specifically acted with and on adjoints of some \lstinline{Dual}. Alas, \lstinline{Dual} has no \lstinline{adjoint} member anymore (and therefore was renamed into \lstinline{Num}). Its replacement is \lstinline{Adjoints} which keeps track of adjoints of every \lstinline{Num}. Consequently our ``tape accumulator'' has to act on \lstinline{Adjoints}. More specifically it has to be of type \lstinline{Adjoints => Adjoints} because you update the current (passed) adjoints by adding each child's partial adjoint and returning a new updated instance of \lstinline{Adjoints}. Previously every \lstinline{DualMonad} had a member \lstinline{adjointsUpdater: Dual => Unit} which was prepended to the tape to ultimately collect every \lstinline{adjointsUpdater}. We could instead use the member \lstinline{adjointsUpdater} itself as an accumulator by changing its type. Previously \lstinline{adjointsUpdater} just signified how to update the adjoints of one subexpression. Only on the tape they were chained. Now we directly chain each \lstinline{adjointsUpdater} recursively on the fly and pass the chained \lstinline{adjointsUpdater} to the outer \lstinline{DualMonad}. Thus we are now skipping the tape entirely by moving it into an accumulator (line 3):
 \begin{lstlisting}
 class DualMonad(
     val parent: Num, 
@@ -25,9 +25,9 @@ end DualMonad
 
 def wrap(n: Num): DualMonad = DualMonad(n, identity)
 \end{lstlisting}
-\lstinline{map} follows the same logic as before. In \lstinline{flatMap} we first call the continuation to get the adjoints (and normal result) of all outer expressions (line 6). \lstinline{outerResult.adjointsUpdater} is then a tape-like construct which captures how to update all adjoints from the top expression up until the current expression. By appending \lstinline{this.adjointsUpdater} in line 9 the operations are sorted from outer to inner which is the correct order we want to iterate through for the reverse pass of reverse mode differentiation.
+\lstinline{map} (line 13) follows the same logic as before in \reflst{lst:monadTape}. In \lstinline{flatMap} we first call the continuation to get the adjoints (and the normal result) of all outer expressions (line 6). \lstinline{outerResult.adjointsUpdater} is then a tape-like construct which captures how to update all adjoints from the top expression up until the current expression. By appending \lstinline{this.adjointsUpdater} in line 9 the operations are sorted from outer to inner which is the correct order we want to iterate through for the reverse pass of reverse mode differentiation.
 
-Implementing \lstinline{Num} is trivial. We just have to remember to always use the updated adjoint map in lines 20 to 24 because \lstinline{addPartialAdjoint} returns a fresh object instead of mutating the old one:
+Implementing \lstinline{Num} is trivial and is very similar to previous implementations . We just have to remember to always use the updated adjoint map in lines 20 to 24 because \lstinline{addPartialAdjoint} returns a fresh object instead of mutating the old one:
 \begin{lstlisting}
 class Num(val x: Double):
     def *(that: Num): DualMonad =
@@ -60,12 +60,15 @@ class Num(val x: Double):
 end Num
 \end{lstlisting}
 
-When executing \lstinline{f} in line 3 of the following listing we don't get a meaningful result yet. We only have the monad of the top expression of the calculation. But this monad contains an \lstinline{adjointsUpdater} which accumulated all operations needed to update an \lstinline{Adjoints} map from scratch into our full result. We create our initial \lstinline{Adjoints} map with default value 0 and we set the top expression to 1 (line 4) just like for CPS. Finally we can call \lstinline{topMonad.adjointsUpdater} on our \lstinline{initialAdjoints} and ultimately get the adjoint of \lstinline{xM} (line 5):
+As always we have to implement \lstinline{differentiate}:
 \begin{lstlisting}
 def differentiate(f: DualMonad => DualMonad)(x: Double): Double =
-    val xM = wrap(Num(x))
+    val xM: DualMonad = wrap(Num(x))
     val topMonad = f(xM)
-    val initialAdjoints = Map.empty.withDefaultValue(0.0).updated(topMonad.parent, 1.0)
+    val initialAdjoints =
+        Map.empty
+            .withDefaultValue(0.0)
+            .updated(topMonad.parent, 1.0)
     topMonad.adjointsUpdater(initialAdjoints)(xM.parent)
 end differentiate
 
@@ -88,4 +91,6 @@ end g
 
 val derivative = differentiate(f andThen g)(3)
 \end{lstlisting}
-As one can see we did not have to sacrifice much to reach an implementation without mutation. Writing and chaining functions (lines 8 to 25) are exactly the same to the previous monad implementation. The implementation itself is arguably better structured because we don't have to implement \lstinline{DualMonad} ad hoc for every operation. Removing mutation and the global tape variable should also make the code easier to reason about. We also prevented at least one potential bug source because one had to remember to reset the tape for every calculation which isn't a problem anymore. Furthermore, we could also argue that parallel execution using a global tape could lead to a multitude of problems which we won't cover in more detail.
+At first we wrap the input \lstinline{Double} into a \lstinline{DualMonad} (line 1). When executing \lstinline{f} in line 3 we don't get a meaningful result yet. We only have the monad of the top expression of the calculation. But this monad contains an \lstinline{adjointsUpdater} which accumulated all operations needed to update an \lstinline{Adjoints} map from scratch into our full result. We create our initial \lstinline{Adjoints} map with default value 0, and we set the top expression to 1 (lines 4 to 7) just like for CPS. Finally, we can call \lstinline{topMonad.adjointsUpdater} on our \lstinline{initialAdjoints} and ultimately get the adjoint of \lstinline{xM} (line 8)
+
+As one can see we did not have to sacrifice much to reach an implementation without mutation. Writing and chaining functions (lines 11 to 28) are exactly the same to the previous monad implementation. The implementation itself is arguably better structured because we don't have to implement \lstinline{DualMonad} ad hoc for every operation. Removing mutation and the global tape variable should also make the code easier to reason about. We also prevented at least one potential bug source because one had to remember to reset the tape for every calculation which isn't a problem anymore. Furthermore, we could also argue that parallel execution using a global tape could lead to a multitude of problems which we won't cover in more detail.

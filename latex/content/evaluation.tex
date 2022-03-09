@@ -17,9 +17,9 @@ We want to compare how the nesting depth impacts runtime performance hence we ne
     nestedAcc andThen f
 }
 \end{lstlisting}
-We create a range (or a list for that matter) with \lstinline{d} items by using \lstinline{(0 until d)}. We fold over it and use \lstinline{f} as the base value. The lambda has two parameters. \lstinline{nestingAcc} accumulates the nested \lstinline{f}s. We ignore the second parameter because it is the svalue of the integer range we called \lstinline{foldLeft} on. The lambda essentially appends another \lstinline{f} to the currently accumulated nested \lstinline{f}s by using \lstinline{andThen}. This is done \lstinline{d} times because the original range has length \lstinline{d}. If \lstinline{d} is 0 then its result is just \lstinline{f}. If \lstinline{d} is 1 then it produces \lstinline{f andThen f} and so forth.
+We create a range (or a list for that matter) with \lstinline{d} items by using \lstinline{(0 until d)}. We fold over it and use \lstinline{f} as the base value. The lambda has two parameters. \lstinline{nestingAcc} accumulates the nested \lstinline{f}s. We ignore the second parameter because it is the value of the integer range we called \lstinline{foldLeft} on. The lambda essentially appends another \lstinline{f} to the currently accumulated nested \lstinline{f}s by using \lstinline{andThen}. This is done \lstinline{d} times because the original range has length \lstinline{d}. If \lstinline{d} is 0 then its result is just \lstinline{f}. If \lstinline{d} is 1 then it produces \lstinline{f andThen f} and so forth.
 
-Each measurement is done \lstinline{n = 100000} \todo{add correct n} times and the average is taken to reduce measurement errors. The full measurement takes place like this:
+Each measurement is done \lstinline{n = 100000} times and the average is taken to reduce measurement errors. The full measurement takes place like this:
 \begin{itemize}
     \item
         For each reverse mode implementation:
