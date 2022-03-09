@@ -5,7 +5,7 @@ Even though the main focus of this work were the implementations and their desig
 def f[A](x: A): A =
     0.1 * x * x * x + 2 * x * (x + 0.3 + x * 1) + 31 * x + x + -1 * x
 \end{lstlisting}
-Dependent on the tested reverse mode implementation the input and return type of \lstinline{f} differs (e.g. \lstinline{Monad}, \lstinline{Dual}) and we use \lstinline{A} as a placeholder. The implementation of \lstinline{f} can also look different but the implemented mathematical function is always the same. For example think about CPS where we could not just write \lstinline{f} as a one liner like above.
+Dependent on the tested reverse mode implementation the input and return type of \lstinline{f} differs (e.g. \lstinline{Monad}, \lstinline{Dual}) and we use \lstinline{A} as a placeholder. The implementation of \lstinline{f} can also look different but the implemented mathematical function is always the same. For example think about CPS where we could not just write \lstinline{f} as an one liner like above.
 \lstinline{f} has multiplication, addition and uses \lstinline{x} and constants multiple times and therefore is not trivial, but it is not really complex either. Clearly we have to know how our implementations perform on more complex functions which resemble deeply nested functions used in machine learning tasks. To achieve this we reuse the previous function and nest it into itself. Mathematically this is simple function composition
 $f \circ f \circ \dots \circ f$. In Scala we use \lstinline{andThen} to compose functions:
 \begin{lstlisting}
@@ -181,7 +181,7 @@ Even though reverse mode is most important we still want to have a quick look at
         \end{axis}
     \end{tikzpicture}
 \end{center}
-We can see that dual number and dual number macro perform similarly which is no surprise because essentially the macro builds a object hierarchy at compile time which in turn execute the same operations the normal dual number implementation would do. Even though we technically have everything for our differentiation determined at compile time when using match types, we still have to do the whole calculation at runtime and unfortunately ca not perform better than the other two implementations. In fact the overhead even makes it a little slower.
+We can see that dual number and dual number macro perform similarly which is no surprise because essentially the macro builds an object hierarchy at compile time which in turn executes the same operations the normal dual number implementation would do. Even though we technically have everything for our differentiation determined at compile time when using match types, we still have to do the whole calculation at runtime and unfortunately ca not perform better than the other two implementations. In fact the overhead even makes it a little slower.
 
 
 % n = 1000000
