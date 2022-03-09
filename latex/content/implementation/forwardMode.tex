@@ -78,7 +78,7 @@ type Elem[X] = X match
     case Array[t] => t
     case Iterable[t] => t
 \end{lstlisting}
-The match type \lstinline{Elem} has one argument \lstinline{X}. If \lstinline{X} is \lstinline{String} then it returns the type \lstinline{Char} (line 2). If \lstinline{X} is \lstinline{Array[t]} or \lstinline{Iterable[t]} it returns the generic type parameter of them, that is \lstinline{t}. In essence, \lstinline{Elem} matches list-likes types and returns their element type. For example, it could be used like this:
+The match type \lstinline{Elem} has one argument \lstinline{X}. If \lstinline{X} is \lstinline{String} then it returns the type \lstinline{Char} (line 2). If \lstinline{X} is \lstinline{Array[t]} or \lstinline{Iterable[t]} it returns the generic type parameter of them, that is \lstinline{t}. In essence, \lstinline{Elem} matches list-like types and returns their element type. For example, it could be used like this:
 \begin{lstlisting}
 val i: Elem[Array[Int]] = 123
 \end{lstlisting}
@@ -123,4 +123,4 @@ The type \lstinline{F} (line 1) is the function we want to differentiate with re
 
 Unfortunately computing a result at type level is impossible because we want to support decimal numbers. Type level calculation with integers on the other hand would be very possible and is included in Scala 3. To allow decimals we have to use a function \lstinline{initFromType} which recursively matches the provided type and constructs a function value which computes the result later at runtime. Essentially this means that we still have to fall back to actual values at runtime if we want usable results from our implementation and ca not pull through a full implementation at type-level and in compile time.
 
-Additionally, we had a major problems concerning compilation time. Multiple chained multiplications took minutes to compile. At first, we blamed our implementation because we shifted (almost) all of our logic into compile time. An update of the Scala compiler to the newest version (3.0.2 as of now) solved that problem. Compilation time now takes no longer than usual compilations.
+Additionally, we had a major problem concerning compilation time. Multiple chained multiplications took minutes to compile. At first, we blamed our implementation because we shifted (almost) all of our logic into compile time. An update of the Scala compiler to the newest version (3.0.2 as of now) solved that problem. Compilation time now takes no longer than usual compilations.
