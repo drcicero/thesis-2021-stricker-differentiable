@@ -83,14 +83,14 @@ The main difference is line 6 where we call the continuation \lstinline{k}. It r
 	}
 
     \begin{tikzpicture}[->, -{Latex}]
-        \node[split=6] (a2) at (4,1) {\nodepart{one} $w_5\ (+)$ \nodepart{two} $w_3\ (*)$ \nodepart{three} $w_1 (x_1)$ \nodepart{four} $w_2 (x_2)$ \nodepart{five} $w_4\ (\sin)$ \nodepart{six} $w_1 (x_1)$};
+        \node[split=5] (a2) at (4,1) {\nodepart{one} $w_4\ (+)$ \nodepart{two} $w_1\ (x_1)$ \nodepart{three} $w_3 (*)$ \nodepart{four} $w_1 (x_1)$ \nodepart{five} $w_2 (x_2)$};
     \end{tikzpicture}
 
     \captionsetup{type=figure}
     \caption{Expression stack after the forward pass}
     \label{fig:stack}
 \end{center}
-From here on therefore the \emph{reverse pass} starts. On top of the stack now resides $w_5$. Lines 9 to 20 are executed to update the adjoint of its subexpressions ($w_3$ and $w_4$). After that $w_3$ and its whole expression tree on the stack is handled and then the same happens for $w_4$. As you can see, after doing the forward pass by abusing continuations we now iterate through each expression in the same order as we would do when doing reverse differentiation by hand.
+From here on therefore the \emph{reverse pass} starts. On top of the stack now resides $w_4$. Lines 9 to 20 are executed to update the adjoint of its subexpressions ($w_1$ and $w_3$). After that, $w_1$ and then $w_3$ and its whole expression tree on the stack is handled. As you can see, after doing the forward pass by abusing continuations we now iterate through each expression in the same order as we would do when doing reverse differentiation by hand. Essentially we have linearized the expression tree to make the reverse pass and therefore adjoint accumulation easier. We use some kind of linearization in almost every reverse mode implementation.
 
 In the end we define a \lstinline{differentiate} operator and call it:
 \begin{lstlisting}[mathescape=true]
