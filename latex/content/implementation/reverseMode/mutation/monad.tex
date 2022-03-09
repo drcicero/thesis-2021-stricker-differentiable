@@ -39,7 +39,7 @@ end f
 \end{lstlisting}
 At this point it should get clear why we wanted to use for-comprehensions to abstract over CPS. The compiler does the hard work for us and almost exactly translates a for-comprehension into CPS. Implementing \lstinline{flatMap} and \lstinline{map} (and thereby a monad) is the last (and main) task. The remaining code structure matches our previous CPS implementation.
 
-Let's first look at the desired general signature for \lstinline{flatMap} and \lstinline{map} of a general monad:
+Let us first look at the desired general signature for \lstinline{flatMap} and \lstinline{map} of a general monad:
 \begin{lstlisting}
 trait Monad[A]:
     def flatMap[B](f: A => Monad[B]): Monad[B] = ???
@@ -53,7 +53,7 @@ trait DualMonad:
     def flatMap(k: Dual => DualMonad): DualMonad = ???
     def map(k: Dual => Dual): DualMonad = ???
 \end{lstlisting}
-We also renamed the passed functions into \lstinline{k} because they clearly represent continuations like one can easily see when looking at the desugared for-comprehension in \reflst{lst:desugaredForComprehension}. Let's look at the full implementation of \lstinline{Dual} and how we could implement \lstinline{DualMonad}:
+We also renamed the passed functions into \lstinline{k} because they clearly represent continuations like one can easily see when looking at the desugared for-comprehension in \reflst{lst:desugaredForComprehension}. Let us look at the full implementation of \lstinline{Dual} and how we could implement \lstinline{DualMonad}:
 \begin{lstlisting}
 case class Dual(x: Double, var adjoint: Double):
     thisDual =>

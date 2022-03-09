@@ -70,14 +70,14 @@ The \lstinline{differentiate} function (line 1) essentially just applies a funct
 
 
 \section{Match Types} \label{sec:matchTypes}
-To explain the following approach we first have to look at match types which are essentially functions but at type level. Given a type, it uses patter-matching over that type to decide which type to return. It gets clear with the following example taken from the Scala 3 docs \cite{matchTypesScala3}:
+To explain the following approach we first have to look at match types which are essentially functions but at type level. Given a type, it uses patter-matching over it to decide which type to return. It gets clear with the following example taken from the Scala 3 docs \cite{matchTypesScala3}:
 \begin{lstlisting}
 type Elem[X] = X match
     case String => Char
     case Array[t] => t
     case Iterable[t] => t
 \end{lstlisting}
-The match type \lstinline{Elem} has one argument \lstinline{X}. If \lstinline{X} is \lstinline{String} then it returns the type \lstinline{Char} (line 2). If \lstinline{X} is \lstinline{Array[t]} or \lstinline{Iterable[t]} it returns the generic type parameter of them, that is \lstinline{t}. In essence \lstinline{Elem} matches list-likes types and returns their element type. For example, it could be used like this:
+The match type \lstinline{Elem} has one argument \lstinline{X}. If \lstinline{X} is \lstinline{String} then it returns the type \lstinline{Char} (line 2). If \lstinline{X} is \lstinline{Array[t]} or \lstinline{Iterable[t]} it returns the generic type parameter of them, that is \lstinline{t}. In essence, \lstinline{Elem} matches list-likes types and returns their element type. For example, it could be used like this:
 \begin{lstlisting}
 val i: Elem[Array[Int]] = 123
 \end{lstlisting}
