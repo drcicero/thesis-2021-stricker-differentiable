@@ -121,7 +121,7 @@ At first, we need our tape where we save all adjoint updates which have to happe
 var tape: Unit => Unit = _ => {}
 \end{lstlisting}
 
-Now we get back to monads. Previously we implemented \lstinline{DualMonad} ad hoc to overcome the different requirements of multiplication and addition. Those differences can be abstracted over which leads to a much cleaner and more reusable design. Essentially what we need to abstract over is the result of an parent calculation and how to update the adjoints of the child expressions using the parent adjoint. Those are both realized as members of \lstinline{DualMonad} and are called \lstinline{parent} and \lstinline{adjointsUpdater} respectively (line 1):
+Now we get back to monads. Previously we implemented \lstinline{DualMonad} ad hoc to overcome the different requirements of multiplication and addition. Those differences can be abstracted over which leads to a much cleaner and more reusable design. Essentially what we need to abstract over is the result of a parent calculation and how to update the adjoints of the child expressions using the parent adjoint. Those are both realized as members of \lstinline{DualMonad} and are called \lstinline{parent} and \lstinline{adjointsUpdater} respectively (line 1):
 \begin{lstlisting}[caption={Monad using tape}, label={lst:monadTape}]
 class DualMonad(val parent: Dual, val adjointsUpdater: Dual => Unit):
     def flatMap(k: Dual => DualMonad): DualMonad =
@@ -134,7 +134,7 @@ end DualMonad
 
 def wrap(dual: Dual): DualMonad = DualMonad(dual, identity)
 \end{lstlisting}
-\lstinline{flatMap} prepends the adjoint update operation to the tape (line 3) which is exactly what we did for our first tape implementation and then calls the continuation (line 4). \lstinline{map} is very similar to our first monad approach as it also just uses \lstinline{flatMap} after wrapping the result of \lstinline{k} (line 7). The difference is that instead of doing an no-op operation on \lstinline{Dual} we wrap it manually by passing a no-op identity function as the \lstinline{adjointUpdater} in the \lstinline{wrap} function (line 10).
+\lstinline{flatMap} prepends the adjoint update operation to the tape (line 3) which is exactly what we did for our first tape implementation and then calls the continuation (line 4). \lstinline{map} is very similar to our first monad approach as it also just uses \lstinline{flatMap} after wrapping the result of \lstinline{k} (line 7). The difference is that instead of doing a no-op operation on \lstinline{Dual} we wrap it manually by passing a no-op identity function as the \lstinline{adjointUpdater} in the \lstinline{wrap} function (line 10).
 
 We have done the hardest task and now only have to glue the pieces together:
 \begin{lstlisting}
