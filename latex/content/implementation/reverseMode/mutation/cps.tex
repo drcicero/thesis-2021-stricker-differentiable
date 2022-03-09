@@ -59,13 +59,11 @@ case class Dual(x: Double, var adjoint: Double):
 
         addPartialAdjoint(this, that.x) // $ i = \text{this} $
         addPartialAdjoint(that, this.x) // $ i = \text{that} $
-
         globalResult
     end *
 
     // Analogous to (*)
     def +(that: Dual)(k: Dual => Dual): Dual = ???
-    def sin(k: Dual => Dual): Dual = ???
 end Dual
 \end{lstlisting}
 Compared to forward dual numbers (\reflst{lst:forwardDualNumber}) we changed the name of the second member of \lstinline{Dual} to \lstinline{adjoint} to reflect the shift in focus from $\dot w_i$ to $\overw{i}$. The comments add translations from code expressions into their mathematic notation from \refsec{sec:reverseMode}. $w_p$ in line 13 signifies the parent expression, e.g. for multiplication we would write it like this:

@@ -13,6 +13,7 @@ These four differentiation rules build the base for our forward mode implementat
 
 \section{Code replacement with macros} \label{sec:macros}
 If you take the last sentence literally you could now go the long and hard way (which we did), learn metaprogramming and implement it exactly by replacing expressions with their derivative by directly applying the aforementioned differentiation rules. This approach looks rather ugly at first sight but after ignoring the boilerplate (with the help of the comments on the right-hand side) one can see that it just boils down to recursive pattern matching of code which works pretty intuitively in Scala 3~\cite{maScala3}:
+\pagebreak
 \begin{lstlisting}
 def d(t: Expr[Term])(using Quotes): Expr[Term] = t match
     case '{ ($l: Term) + ($r: Term) } =>    // l + r

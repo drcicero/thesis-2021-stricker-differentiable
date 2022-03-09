@@ -132,7 +132,7 @@ At definition time of \lstinline{w3} we do not have enough information to calcul
     \label{fig:informationFlow}
 \end{center}
 
-The main takeaway from this extensive example is an important pattern which we will be utilizing to implement the reverse pass. The second last term of every calculation of $\overw{i}^z$ (i.e. the partial adjoint of the $z$-th occurrence of $w_i$) with $z \in \{a, b, ...\}$ has always the following pattern:
+The main takeaway from this extensive example is an important pattern which we will be utilizing to implement the reverse pass. The second last term of every calculation of $\overw{i}^z$ (i.e. the partial adjoint of the $z$-th occurrence of $w_i$) with $z \in \{a, b, \dots\}$ has always the following pattern:
 \newcommand{\defoverwiz}{\overw{i}^z = \overw{p}\diff{w_p}{w_i^z}}
 \[ \defoverwiz \]
 for some $p$. This $p$ (\emph{parent index}) is not at all random. $w_p$ is always the parent expression of that specific occurrence $w_i^z$ of $w_i$. We use the superscript to distinguish specific occurrences. We also could have written $y$ like (notice the added superscripts $a$ and $b$)

@@ -1,6 +1,7 @@
 \subsection{Continuation Passing Style (CPS)} \label{sec:functionalCps}
 
 To eliminate mutation we have to firstly detect where mutation even occurs. Looking at the implementation of mutable CPS (\reflst{lst:cpsDual}) we directly find the culprit in the first line. The second member of \lstinline{Dual}, namely \lstinline{adjoint}, is mutable. As a matter of fact that is the only mutable state we use and therefore we have to remove it. \lstinline{Dual} is no longer a dual number when we remove its second member so we rename it to just \lstinline{Num} accordingly. Simply changing \lstinline{adjoint} to a \lstinline{val} would not suffice because we cannot know the adjoint of a \lstinline{Dual} at creation time because the adjoint has to be \emph{accumulated} from multiple branches. Adding an accumulator which is recursively propagated is consequently the logical next step. For this step we have to remember the obvious but critical fact that the reverse pass is indeed \emph{reverse} and we want to propagate the accumulator from parent to children. This is opposed to usual recursive algorithms where each child passes the accumulator to its parent until it reaches the top expression. The top expression uses the full accumulator to produce the full result. To achieve the reversed recursive pass through all expressions we still abuse continuations to build a stack which is naturally traversed in reverse order. The remaining task is to propagate the accumulator correctly. Let us look at the finished code and work along it to understand how one could implement that:
+\pagebreak
 \begin{lstlisting}
 type Adjoints = Map[Num, Double]
 type Continuation = Num => Adjoints
@@ -52,7 +53,6 @@ def differentiate(
         Map(topExpression -> 1.0).withDefaultValue(0)
     }
     allAdjoints(xNum)
-end Num
 
 def f(x: Num)(k: Continuation): Adjoints =
     (2 * x) { y1 =>

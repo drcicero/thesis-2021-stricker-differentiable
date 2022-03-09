@@ -27,11 +27,12 @@ def wrap(n: Num): DualMonad = DualMonad(n, identity)
 \end{lstlisting}
 \lstinline{map} (line 13) follows the same logic as before in \reflst{lst:monadTape}. In \lstinline{flatMap} we first call the continuation to get the adjoints (and the normal result) of all outer expressions (line 6). \lstinline{outerResult.adjointsUpdater} is then a tape-like construct which captures how to update all adjoints from the top expression up until the current expression. By appending \lstinline{this.adjointsUpdater} in line 9 the operations are sorted from outer to inner which is the correct order we want to iterate through for the reverse pass of reverse mode differentiation.
 
-Implementing \lstinline{Num} is trivial and is very similar to previous implementations . We just have to remember to always use the updated adjoint map in lines 20 to 24 because \lstinline{addPartialAdjoint} returns a fresh object instead of mutating the old one:
+Implementing \lstinline{Num} is trivial and is very similar to previous implementations . We just have to remember to always use the updated adjoint map in line 25 and 26 because \lstinline{addPartialAdjoint} returns a fresh object instead of mutating the old one:
 \begin{lstlisting}
 class Num(val x: Double):
     def *(that: Num): DualMonad =
         val parent = Num(this.x * that.x)
+
 
         def addPartialAdjoint(
             thisOrThat: Num, 
@@ -44,6 +45,7 @@ class Num(val x: Double):
                 adjoints(thisOrThat) + partialAdjoint
             adjoints + (thisOrThat -> newAdjointThisOrThat)
         end addPartialAdjoint
+
 
         DualMonad(
             parent,
