@@ -78,9 +78,9 @@ Forward and reverse mode differentiation are built on two different main formula
     \end{equation*}
 \end{minipage}
 \\ \\
-In forward mode we compute the derivative from small $i$ to largest, i.e.\ from the leaves to the root of the tree. For example if $\dot w_1 = \dot x_1$ and $\dot w_2 = \dot x_2$ are given we can calculate (by using the product rule)
+In forward mode we compute the derivative from small $i$ to largest, i.e.\ from the leaves to the root of the tree. For example if $\dot w_1 = \dot x_1$ and $\dot w_2 = \dot x_2$ are given, we can calculate (by using the product rule)
 \[ \dot w_3 = w_1 \dot w_2 + \dot w_1 w_2. \]
-With that we can then find $\dot w_4$. Note that as stated above we need to know the initial value of $\dot x_1$ and $\dot x_2$. If we had one single variable we would set it to $\dot x = \diff{x}{x} = 1$ and calculate our result. But as we have two variables we have to do two passes through the whole calculation, one with $\dot x_1 = 1, \dot x_2 = 0$ and one with $\dot x_1 = 0, \dot x_2 = 1$. Reverse mode does not have to do this. It only has to do one pass to calculate the same result which is the whole motivation to do reverse mode instead of forward mode. In fact for a function $f: \R^n \to \R^m$ forward mode has to do $n$ passes and reverse mode has to do $m$ passes through the whole function. Usually in machine learning tasks you have functions with $n >\! \!> m$ which are also very complex. You certainly want to do as least passes as possible.
+With that we can then find $\dot w_4$. Note that as stated above we need to know the initial value of $\dot x_1$ and $\dot x_2$. If we had one single variable, we would set it to $\dot x = \diff{x}{x} = 1$ and calculate our result. But as we have two variables we have to do two passes through the whole calculation, one with $\dot x_1 = 1, \dot x_2 = 0$ and one with $\dot x_1 = 0, \dot x_2 = 1$. Reverse mode does not have to do this. It only has to do one pass to calculate the same result which is the whole motivation to do reverse mode instead of forward mode. In fact for a function $f: \R^n \to \R^m$ forward mode has to do $n$ passes and reverse mode has to do $m$ passes through the whole function. Usually in machine learning tasks you have functions with $n >\! \!> m$ which are also very complex. You certainly want to do as least passes as possible.
 
 For reverse mode we have to shift our focus from $\dot w_i$ to another main expression of concern, namely
 \[ \overw{i} \coloneqq \diffyw{i} \]
@@ -91,18 +91,18 @@ Forward mode replaces all occurrences of $\dot w_i$ by using the chain rule whic
 \[ \diff{y}{x} = \diffyw{1}\diff{w_1}{x} = \bigg(\diffyw{2}\diffw{2}{1}\bigg)\diff{w_1}{x} = \bigg(\bigg(\diffyw{3}\diffw{3}{2}\bigg)\diffw{2}{1}\bigg)\diff{w_1}{x} = \dots \]
 On first sight it might look like we traverse from $i = 1$ to $5$. However as one calculates the expression in the innermost parentheses first one can easily see that the iteration actually goes from large to small index (i.e.\ root to leaves) opposed to forward mode.
 
-This usage of the chain rule essentially dictates how we compute the reverse mode derivative. Our job is to calculate all $\overw{i}$ by applying the chain rule recursively until we have rewritten it into an expression including trivial subexpressions or $\overw{j}$ with $j > i$ (i.e.\ ancestor adjoints) which we would have already computed at that point. We use the same $y$ as above and calculate the adjoints of subexpressions $w_4$ to $w_2$ by applying the chain rule which constantly introduce parent expressions into the formula:
+This usage of the chain rule essentially dictates how we compute the reverse mode derivative. Our job is to calculate all $\overw{i}$ by applying the chain rule recursively until we have rewritten it into an expression including trivial subexpressions or $\overw{j}$ with $j > i$ (i.e.\ ancestor adjoints) which we would have already computed at that point. We use the same $y$ as above and calculate the adjoints of subexpressions $w_4$ to $w_2$ by applying the chain rule which constantly introduces parent expressions into the formula:
 \yExampleDiff
 \begin{align*}
     \overw{4}   & = \diffyw{4} = 1                                                                                                           \\
     \overw{3}   & = \diffyw{3} = \diffyw{4}\diffw{4}{3} = \overw{4}\diffw{4}{3} = 1                                                          \\
     \overw{2}   & = \diffyw{2} = \diffyw{4}\diffw{4}{2} = \diffyw{4}\diffw{4}{3}\diffw{3}{2} = \overw{4}\diffw{4}{3}\diffw{3}{2} = \overw{3}\diffw{3}{2} = w_1       \\
-    \intertext{These were straight forward after recognizing the general pattern. Calculating $\overw{1}$ it not as straight forward:}
+    \intertext{These were straight forward after recognizing the general pattern. Calculating $\overw{1}$ is not as straight forward:}
     \overw{1}^a & = \diffyw{1} = \diffyw{4}\diffw{4}{1} = \overw{4}\diffw{4}{1} = 1 \\
     \overw{1}^b & = \diffyw{1} = \diffyw{4}\diffw{4}{1} = \diffyw{4}\diffw{4}{3}\diffw{3}{1} = \overw{4}\diffw{4}{3}\diffw{3}{1} = \overw{3}\diffw{3}{1} = w_2       \\
     \overw{1}   & = \overw{1}^a + \overw{1}^b
 \end{align*}
-We had to realise that $w_1$ appears in two ``calculation branches'' and had to handle them separately. Lastly these partial adjoints (i.e. $\overw{1}^a$ and $\overw{1}^b$) of all branches then have to be summed (implying that if $w_1$ would occur $n$ times we had to sum $n$ results) into the full adjoint $\overw{1}$.
+We had to realise that $w_1$ appears in two ``calculation branches'' and had to handle them separately. Lastly these partial adjoints (i.e. $\overw{1}^a$ and $\overw{1}^b$) of all branches then have to be summed (implying that if $w_1$ would occur $n$ times, we had to sum $n$ results) into the full adjoint $\overw{1}$.
 
 After some consideration and breaking down every step this process is not very complicated. This is true for a human who can overlook the whole expression including all its subexpressions. A program on the other hand often only has a limited view of the whole expression. Consider this translation of our example into code:
 \begin{lstlisting}
@@ -146,7 +146,7 @@ to further emphasize distinct occurrences of expressions $w_i$. Usually we omit 
 
 When boiling down
 \[ \overw{i}^z = \overw{p}\diff{w_p}{w_i^z}\]
-further we realise that we have to compute the derivative of the parent expression with respect to $w_i^z$. This is fortunately comparatively easy. A parent expression will always be an atomic operation (e.g. (*), (+), (-), $\sin$) and $w_i^z$ is always a direct argument. Because we usually know the derivative of each of our atomic operations, we can simply handle every case, e.g.\ if $w_p$ is a multiplication expression (and it has some right-hand side $w_k$) we can simply compute:
+further we realise that we have to compute the derivative of the parent expression with respect to $w_i^z$. This is fortunately comparatively easy. A parent expression will always be an atomic operation (e.g. (*), (+), (-), $\sin$) and $w_i^z$ is always a direct argument. Because we usually know the derivative of each of our atomic operations, we can simply handle every case, e.g.\ if $w_p$ is a multiplication expression (and it has some right-hand side $w_k$), we can simply compute:
 \[ \diff{w_p}{w_i^z} = \diff{(w_i^z \cdot w_k)}{w_i^z} = w_k \]
 The remaining and main task is to find $\overw{p}$, the adjoint of the parent expression (i.e.\ the derivative of $y$ with respect to $w_p$). This is a recursive problem but unfortunately in reverse order because information flows from outer expression to inner which is the reason why this is called the reverse pass as already illustrated in \reffig{fig:informationFlow}. Solving this ``reversed flow of information'' to calculate $\overw{p}$ elegantly, efficiently or easily to reason about is the main goal of the following implementations.
 
