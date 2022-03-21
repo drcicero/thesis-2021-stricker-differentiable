@@ -1,1 +1,1 @@
-## Differentiable REScala
+## Differentiable Programming in Scala
